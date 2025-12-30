@@ -1,0 +1,84 @@
+\documentclass{resume}
+
+% Personal Information
+\name{{{ name }}}
+{% if email %}\email{{{ email }}}{% endif %}
+{% if phone %}\phone{{{ phone }}}{% endif %}
+{% if location %}\location{{{ location }}}{% endif %}
+{% if linkedin %}\linkedin{{{ linkedin }}}{% endif %}
+{% if github %}\github{{{ github }}}{% endif %}
+{% if website %}\website{{{ website }}}{% endif %}
+
+\begin{document}
+
+% Header
+\resumeHeader
+
+%-------------------------------------------------------------------------------
+%	EDUCATION SECTION
+%-------------------------------------------------------------------------------
+{% if education %}
+\section{Education}
+\resumeItemListStart
+{% for edu in education %}
+\resumeSubheading{% if edu.location %}{{ edu.school }}}{{ edu.location }}{% else %}{{ edu.school }}{% endif %}{{ edu.start_date }}{% if edu.end_date %} -- {{ edu.end_date }}{% endif %}}{% if edu.degree %}{{ edu.degree }}{% if edu.major %}, {{ edu.major }}{% endif %}{% endif %}{% if edu.gpa %}, GPA: {{ edu.gpa }}{% endif %}
+{% if edu.highlights %}
+{% for highlight in edu.highlights %}
+\resumeItem{{{ highlight }}}
+{% endfor %}
+{% endif %}
+{% endfor %}
+\resumeItemListEnd
+{% endif %}
+
+%-------------------------------------------------------------------------------
+%	EXPERIENCE SECTION
+%-------------------------------------------------------------------------------
+{% if experience %}
+\section{Experience}
+\resumeItemListStart
+{% for exp in experience %}
+\resumeSubheading{% if exp.location %}{{ exp.company }}}{{ exp.location }}{% else %}{{ exp.company }}{% endif %}{{ exp.start_date }}{% if exp.end_date %} -- {{ exp.end_date }}{% elif exp.is_current %} -- Present{% endif %}}{{ exp.role }}
+{% if exp.bullets %}
+{% for bullet in exp.bullets %}
+\resumeItem{{{ bullet.bullet }}}
+{% endfor %}
+{% endif %}
+{% endfor %}
+\resumeItemListEnd
+{% endif %}
+
+%-------------------------------------------------------------------------------
+%	PROJECTS SECTION
+%-------------------------------------------------------------------------------
+{% if projects and include_projects %}
+\section{Projects}
+\resumeItemListStart
+{% for proj in projects %}
+\resumeProjectHeading{{ proj.name }}{{ proj.start_date }}{% if proj.end_date %} -- {{ proj.end_date }}{% endif %}}{% if proj.role %}{{ proj.role }}{% endif %}
+{% if proj.bullets %}
+{% for bullet in proj.bullets %}
+\resumeItem{{{ bullet.bullet }}}
+{% endfor %}
+{% endif %}
+{% if proj.technologies %}
+\resumeItem{\textbf{Technologies:} {{ proj.technologies | join(', ') }}}
+{% endif %}
+{% endfor %}
+\resumeItemListEnd
+{% endif %}
+
+%-------------------------------------------------------------------------------
+%	SKILLS SECTION
+%-------------------------------------------------------------------------------
+{% if skills and include_skills %}
+\section{Technical Skills}
+\resumeItemListStart
+{% for category in skills.categories %}
+\resumeSubItem{{ category.name }}{{ category.items | join(', ') }}
+{% endfor %}
+\resumeItemListEnd
+{% endif %}
+
+\end{document}
+

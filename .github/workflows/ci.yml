@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install dependencies
+        run: |
+          cd backend
+          poetry install
+          cd ../shared
+          poetry install
+      - name: Run tests
+        env:
+          DEV_AUTH_BYPASS: "true"
+          DATABASE_URL: "postgresql://test:test@localhost/test"
+        run: |
+          cd backend
+          poetry run pytest --cov=app --cov-report=xml --cov-report=html
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+
+  worker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install dependencies
+        run: |
+          cd worker
+          poetry install
+          cd ../shared
+          poetry install
+      - name: Run tests
+        env:
+          AI_PROVIDER: "mock"
+        run: |
+          cd worker
+          poetry run pytest --cov=app --cov-report=xml --cov-report=html
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./worker/coverage.xml
+          flags: worker
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - name: Install dependencies
+        run: |
+          cd frontend
+          pnpm install
+      - name: Run linter
+        run: |
+          cd frontend
+          pnpm lint
+      - name: Run type check
+        run: |
+          cd frontend
+          pnpm type-check
+      - name: Run tests
+        run: |
+          cd frontend
+          pnpm test:coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./frontend/coverage/coverage-final.json
+          flags: frontend
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Lint backend
+        run: |
+          cd backend
+          poetry install
+          poetry run black --check .
+          poetry run isort --check .
+      - name: Lint worker
+        run: |
+          cd worker
+          poetry install
+          poetry run black --check .
+          poetry run isort --check .
+

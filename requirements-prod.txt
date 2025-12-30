@@ -1,0 +1,6 @@
+# Production Requirements
+# Install with: pip install -r requirements-prod.txt
+# This is the same as requirements.txt (no dev dependencies)
+
+# Include all production dependencies
+-r requirements.txt
