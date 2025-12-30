@@ -3,7 +3,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -17,6 +17,7 @@ limiter = Limiter(key_func=get_remote_address)
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
 @limiter.limit("100/minute")
 async def create_skill_category(
+    request: Request,
     category_data: dict,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
@@ -31,6 +32,7 @@ async def create_skill_category(
 @router.get("/categories", response_model=List[dict])
 @limiter.limit("100/minute")
 async def list_skill_categories(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
@@ -48,6 +50,7 @@ async def list_skill_categories(
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("100/minute")
 async def delete_skill_category(
+    request: Request,
     category_id: UUID,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),

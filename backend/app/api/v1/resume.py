@@ -4,7 +4,7 @@ import json
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -31,7 +31,8 @@ limiter = Limiter(key_func=get_remote_address)
 @router.post("/generate", response_model=ResumeGenerateResponse)
 @limiter.limit(f"{settings.RATE_LIMIT_GENERATE_PER_HOUR}/hour")
 async def generate_resume(
-    request: ResumeGenerateRequest,
+    request: Request,
+    generate_request: ResumeGenerateRequest,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
@@ -44,13 +45,13 @@ async def generate_resume(
 
     # Get profile and all related data
     profile_service = ProfileService(supabase, user_id)
-    profile = await profile_service.get_profile(UUID(request.profile_id))
+    profile = await profile_service.get_profile(UUID(generate_request.profile_id))
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     # Get job description
-    jd_text = request.job_description_text
-    jd_id = request.job_description_id
+    jd_text = generate_request.job_description_text
+    jd_id = generate_request.job_description_id
 
     if jd_id:
         jd_result = (
@@ -73,7 +74,7 @@ async def generate_resume(
     template_result = (
         supabase.table("resume_template")
         .select("*")
-        .eq("name", request.template_id)
+        .eq("name", generate_request.template_id)
         .execute()
     )
     if not template_result.data:
@@ -86,25 +87,25 @@ async def generate_resume(
         "education": (
             supabase.table("education")
             .select("*, education_highlight(*)")
-            .eq("profile_id", request.profile_id)
+            .eq("profile_id", generate_request.profile_id)
             .execute()
         ).data,
         "experience": (
             supabase.table("experience")
             .select("*, experience_bullet(*)")
-            .eq("profile_id", request.profile_id)
+            .eq("profile_id", generate_request.profile_id)
             .execute()
         ).data,
         "projects": (
             supabase.table("project")
             .select("*, project_bullet(*), project_link(*), project_tech(*)")
-            .eq("profile_id", request.profile_id)
+            .eq("profile_id", generate_request.profile_id)
             .execute()
         ).data,
         "skills": (
             supabase.table("skill_category")
             .select("*, skill_item(*)")
-            .eq("profile_id", request.profile_id)
+            .eq("profile_id", generate_request.profile_id)
             .execute()
         ).data,
     }
@@ -115,13 +116,13 @@ async def generate_resume(
         .insert(
             {
                 "user_id": user_id,
-                "profile_id": request.profile_id,
+                "profile_id": generate_request.profile_id,
                 "job_description_id": str(jd_id) if jd_id else None,
                 "template_id": str(template_id),
                 "status": "QUEUED",
-                "page_count": request.page_count,
-                "include_projects": request.include_projects,
-                "include_skills": request.include_skills,
+                "page_count": generate_request.page_count,
+                "include_projects": generate_request.include_projects,
+                "include_skills": generate_request.include_skills,
                 "profile_snapshot": json.dumps(profile_snapshot),
                 "jd_snapshot": jd_text,
             }
@@ -158,6 +159,7 @@ async def generate_resume(
 @router.get("/{resume_id}")
 @limiter.limit("100/minute")
 async def get_resume_status(
+    request: Request,
     resume_id: UUID,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
@@ -178,6 +180,7 @@ async def get_resume_status(
 @router.get("/{resume_id}/files", response_model=List[dict])
 @limiter.limit("100/minute")
 async def get_resume_files(
+    request: Request,
     resume_id: UUID,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
@@ -220,6 +223,7 @@ async def get_resume_files(
 @router.get("", response_model=List[dict])
 @limiter.limit("100/minute")
 async def list_resumes(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):

@@ -1,12 +1,19 @@
 """Application configuration."""
 
 import os
+from pathlib import Path
 from typing import List
 
 try:
-    from pydantic_settings import BaseSettings
+    from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
     from pydantic import BaseSettings
+    from pydantic import ConfigDict as SettingsConfigDict
+
+
+# Get project root (two levels up from backend/app/core/config.py)
+_project_root = Path(__file__).parent.parent.parent.parent
+_env_file = _project_root / ".env"
 
 
 class Settings(BaseSettings):
@@ -37,9 +44,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 100
     RATE_LIMIT_GENERATE_PER_HOUR: int = 10
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        extra="ignore",  # Ignore extra fields from .env (used by worker/frontend)
+        case_sensitive=True,
+        env_file=str(_env_file) if _env_file.exists() else ".env",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()

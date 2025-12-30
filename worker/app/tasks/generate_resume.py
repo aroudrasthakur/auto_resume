@@ -13,12 +13,12 @@ from typing import Dict
 from celery import Task
 from supabase import Client, create_client
 
-from worker.app.ai.provider import get_ai_provider
-from worker.app.celery_app import celery_app
-from worker.app.core.config import settings
-from worker.app.latex.compiler import compile_pdf
-from worker.app.latex.renderer import render_latex
-from worker.app.storage.client import upload_file
+from app.ai.provider import get_ai_provider
+from app.celery_app import celery_app
+from app.core.config import settings
+from app.latex.compiler import compile_pdf
+from app.latex.renderer import render_latex
+from app.storage.client import upload_file
 from shared.app.constants import GenerationStatus
 
 # Initialize Supabase client

@@ -11,7 +11,7 @@ celery_app = Celery(
     "worker",
     broker=redis_url,
     backend=redis_url,
-    include=["worker.app.tasks.generate_resume", "worker.app.tasks.embeddings"],
+    include=["app.tasks.generate_resume", "app.tasks.embeddings"],
 )
 
 celery_app.conf.update(

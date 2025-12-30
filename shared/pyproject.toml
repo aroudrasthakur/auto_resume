@@ -3,7 +3,7 @@ name = "shared"
 version = "0.1.0"
 description = "Shared utilities and schemas for AI Resume Creator"
 authors = ["Your Name <you@example.com>"]
-packages = [{include = "app", from = "."}]
+packages = [{include = "shared", from = "."}]
 
 [tool.poetry.dependencies]
 python = "^3.11"

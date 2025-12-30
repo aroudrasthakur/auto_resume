@@ -1,10 +1,18 @@
 """Alembic environment configuration."""
 
 import os
+from pathlib import Path
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+# Load .env file from project root (two levels up from migrations/env.py)
+project_root = Path(__file__).parent.parent
+env_file = project_root / ".env"
+if env_file.exists():
+    from dotenv import load_dotenv
+    load_dotenv(env_file)
 
 # Import base metadata (will be created in models)
 # For now, we'll use autogenerate with explicit imports
@@ -21,8 +29,13 @@ if config.config_file_name is not None:
 
 # Get database URL from environment
 database_url = os.getenv("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+if not database_url:
+    raise ValueError(
+        "DATABASE_URL environment variable is required. "
+        "Please set it in your .env file or environment. "
+        "Example: DATABASE_URL=postgresql://user:pass@host:5432/dbname"
+    )
+config.set_main_option("sqlalchemy.url", database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

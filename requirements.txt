@@ -31,6 +31,7 @@ supabase==2.0.0
 # Also compatible with fastapi 0.115.6+ and Python 3.11
 pydantic==2.11.7
 pydantic-settings==2.6.1
+python-dotenv==1.0.0
 
 # ============================================================================
 # Authentication & Security

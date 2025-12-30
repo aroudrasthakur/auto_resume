@@ -5,9 +5,6 @@ from abc import ABC, abstractmethod
 from typing import Dict
 
 from app.core.config import settings
-from app.ai.mock_adapter import MockAdapter
-from app.ai.openai_adapter import OpenAIAdapter
-from app.ai.ollama_adapter import OllamaAdapter
 
 
 class AIProvider(ABC):
@@ -33,6 +30,11 @@ class AIProvider(ABC):
 
 def get_ai_provider() -> AIProvider:
     """Get AI provider based on configuration."""
+    # Import adapters here to avoid circular imports
+    from app.ai.mock_adapter import MockAdapter
+    from app.ai.openai_adapter import OpenAIAdapter
+    from app.ai.ollama_adapter import OllamaAdapter
+    
     provider = os.getenv("AI_PROVIDER", settings.AI_PROVIDER).lower()
 
     if provider == "mock":

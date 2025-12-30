@@ -243,8 +243,14 @@ def upgrade() -> None:
         sa.UniqueConstraint('name', name='resume_template_name_key')
     )
 
-    # Create generation_status enum
-    op.execute("CREATE TYPE generation_status AS ENUM ('QUEUED','RUNNING','DONE','FAILED')")
+    # Create generation_status enum (if not exists)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE generation_status AS ENUM ('QUEUED','RUNNING','DONE','FAILED');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """)
 
     # Create generated_resume table
     op.create_table(
@@ -254,7 +260,7 @@ def upgrade() -> None:
         sa.Column('profile_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('job_description_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('template_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('status', postgresql.ENUM('QUEUED', 'RUNNING', 'DONE', 'FAILED', name='generation_status'), nullable=False, server_default='QUEUED'),
+        sa.Column('status', postgresql.ENUM('QUEUED', 'RUNNING', 'DONE', 'FAILED', name='generation_status', create_type=False), nullable=False, server_default='QUEUED'),
         sa.Column('page_count', sa.Integer(), nullable=False, server_default='1'),
         sa.Column('include_projects', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('include_skills', sa.Boolean(), nullable=False, server_default='true'),
@@ -278,8 +284,14 @@ def upgrade() -> None:
     op.create_index('idx_gen_profile', 'generated_resume', ['profile_id'])
     op.create_index('idx_gen_status', 'generated_resume', ['status'])
 
-    # Create file_type enum
-    op.execute("CREATE TYPE file_type AS ENUM ('LATEX','PDF','DOCX')")
+    # Create file_type enum (if not exists)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE file_type AS ENUM ('LATEX','PDF','DOCX');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """)
 
     # Create generated_file table
     op.create_table(
@@ -287,7 +299,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('generated_resume_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('type', postgresql.ENUM('LATEX', 'PDF', 'DOCX', name='file_type'), nullable=False),
+        sa.Column('type', postgresql.ENUM('LATEX', 'PDF', 'DOCX', name='file_type', create_type=False), nullable=False),
         sa.Column('storage_key', sa.Text(), nullable=False),
         sa.Column('mime_type', sa.Text(), nullable=False),
         sa.Column('size_bytes', sa.BigInteger(), nullable=False, server_default='0'),
