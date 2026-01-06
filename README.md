@@ -33,91 +33,88 @@ AI-powered resume generation tool with vector-powered intelligent content select
 - AWS Cognito User Pool (or use DEV_AUTH_BYPASS for local dev)
 - Tectonic (for PDF compilation)
 
-## Local Setup
+## Local Setup (single `requirements.txt`)
 
 ### 1. Clone Repository
-
 ```bash
 git clone <repository-url>
 cd auto_resume
 ```
 
 ### 2. Configure Environment
-
-Copy `.env.example` to `.env` and fill in your values:
-
+Environment variables are read from the root `.env` by backend, worker, and migrations. Copy and fill:
 ```bash
 cp .env.example .env
 ```
+Key entries: `DATABASE_URL`, Supabase keys, Cognito (user pool/app client/domain), `AI_PROVIDER`, `OPENAI_API_KEY` (if needed), `REDIS_URL`, `ENCRYPTION_KEY` (64 hex chars).
 
-Required variables:
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`
-- `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `COGNITO_REGION` (or set `DEV_AUTH_BYPASS=true`)
-- `AI_PROVIDER` (openai/mock/ollama)
-- `OPENAI_API_KEY` (if using OpenAI)
-- `ENCRYPTION_KEY` (64-character hex string)
-- `REDIS_URL`
-
-### 3. Setup Supabase
-
-1. Create a Supabase project at https://supabase.com
-2. Enable pgvector extension: `CREATE EXTENSION IF NOT EXISTS vector;`
-3. Create storage bucket: `generated-resumes` (private)
-4. See `docs/SUPABASE_SETUP.md` for detailed instructions
-
-### 4. Run Database Migrations
-
+Frontend uses `frontend/.env.local`:
 ```bash
-cd migrations
-poetry install
-poetry run alembic upgrade head
-poetry run python seed.py  # Seed template data
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_COGNITO_DOMAIN=<https://your-domain.auth.<region>.amazoncognito.com>
+NEXT_PUBLIC_COGNITO_CLIENT_ID=<app-client-id>
+NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/callback
 ```
 
-### 5. Install Dependencies
+More detailed startup steps are in `STARTUP_GUIDE.md`.
 
+### 3. Python Setup (backend/worker/migrations share the same venv)
 ```bash
-# Backend
-cd backend
-poetry install
+python -m venv .venv
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+# macOS/Linux
+source .venv/bin/activate
 
-# Worker
-cd ../worker
-poetry install
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e ./shared
+```
 
-# Shared
-cd ../shared
-poetry install
+### 4. Database Migrations
+```bash
+cd migrations
+alembic upgrade head
+python seed.py  # optional sample data/templates
+```
 
-# Frontend
-cd ../frontend
+### 5. Frontend Dependencies
+```bash
+cd frontend
 pnpm install
 ```
 
 ### 6. Start Services
-
 ```bash
-# Start Redis
+# From repo root
 docker compose up -d redis
 
-# Start backend (in one terminal)
+# Backend (new terminal)
 cd backend
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Start worker (in another terminal)
+# Worker (new terminal)
 cd worker
-poetry run celery -A app.celery_app worker --loglevel=info
+celery -A app.celery_app worker --loglevel=info
 
-# Start frontend (in another terminal)
+# Frontend (new terminal)
 cd frontend
 pnpm dev
 ```
 
 ### 7. Access Application
-
 - Frontend: http://localhost:3000
 - API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
+
+### 8. Notes / Troubleshooting
+- Backend, worker, and migrations load `.env` from the project root automatically.
+- If Alembic complains about `DATABASE_URL`, ensure it is set in `.env` and the virtualenv is active.
+- If Cognito returns `invalid_scope` or `redirect_mismatch`, confirm the App Client has:
+  - Grant: Authorization code
+  - Scopes: `openid`, `email`, `profile`
+  - Callback: `http://localhost:3000/callback`
+  - Sign-out: `http://localhost:3000`
 
 ## Testing
 
