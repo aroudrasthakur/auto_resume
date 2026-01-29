@@ -42,13 +42,23 @@ cd auto_resume
 ```
 
 ### 2. Configure Environment
-Environment variables are read from the root `.env` by backend, worker, and migrations. Copy and fill:
+**All services (backend, worker, frontend) use the root `.env` file as the single source of truth.**
+
+Copy and fill the root `.env` file:
 ```bash
 cp .env.example .env
 ```
-Key entries: `DATABASE_URL`, Supabase keys, Cognito (user pool/app client/domain), `AI_PROVIDER`, `OPENAI_API_KEY` (if needed), `REDIS_URL`, `ENCRYPTION_KEY` (64 hex chars).
 
-Frontend uses `frontend/.env.local`:
+Key entries include:
+- `DATABASE_URL` - Supabase database connection string
+- Supabase keys (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`)
+- Cognito configuration (`COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `COGNITO_REGION`)
+- Frontend public variables (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COGNITO_DOMAIN`, `NEXT_PUBLIC_COGNITO_CLIENT_ID`, `NEXT_PUBLIC_REDIRECT_URI`)
+- `AI_PROVIDER` and `OPENAI_API_KEY` (if using OpenAI)
+- `REDIS_URL`
+- `ENCRYPTION_KEY` (64 hex chars)
+
+Example frontend variables in root `.env`:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_COGNITO_DOMAIN=<https://your-domain.auth.<region>.amazoncognito.com>

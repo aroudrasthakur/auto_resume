@@ -63,6 +63,17 @@ class SignupResponse(BaseModel):
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 def login(request: LoginRequest):
     """Authenticate user against Cognito without Hosted UI."""
+    # Dev bypass: return fake tokens
+    if settings.DEV_AUTH_BYPASS:
+        fake_tokens = {
+            "access_token": "dev-access-token",
+            "id_token": "dev-id-token",
+            "refresh_token": "dev-refresh-token",
+            "expires_in": 3600,
+            "expires_at": int((datetime.now(timezone.utc) + timedelta(seconds=3600)).timestamp() * 1000),
+        }
+        return LoginResponse(**fake_tokens)
+    
     client = _cognito_client()
     try:
         resp = client.initiate_auth(
@@ -92,6 +103,14 @@ def login(request: LoginRequest):
 @router.post("/signup", response_model=SignupResponse, tags=["auth"])
 def signup(request: SignupRequest):
     """Register a new user in Cognito without redirecting to Hosted UI."""
+    # Dev bypass: return fake success response
+    if settings.DEV_AUTH_BYPASS:
+        return SignupResponse(
+            user_sub="dev-user-123",
+            user_confirmed=True,
+            message="Signup successful (dev mode).",
+        )
+    
     client = _cognito_client()
     try:
         resp = client.sign_up(

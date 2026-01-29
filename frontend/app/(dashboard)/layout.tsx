@@ -84,9 +84,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {/* User Section */}
               <li className="mt-auto">
                 <div className="p-4 rounded-xl bg-slate-800/50 mb-4">
-                  <div className="flex items-center gap-3 mb-3">
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-3 mb-3 p-2 -m-2 rounded-lg hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold">
-                      {user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                      {user?.nickname?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">
@@ -96,7 +99,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         {user?.email || ''}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                   <button
                     onClick={logout}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
@@ -124,9 +127,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="flex-1 text-sm font-semibold leading-6 text-white">
           ResumeAI
         </div>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold">
-          {user?.email?.charAt(0).toUpperCase() || 'U'}
-        </div>
+        <Link
+          href="/profile"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold hover:opacity-80 transition-opacity"
+        >
+          {user?.nickname?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+        </Link>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -183,9 +189,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
               {/* User Section Mobile */}
               <div className="p-4 rounded-xl bg-slate-800/50">
-                <div className="flex items-center gap-3 mb-3">
+                <Link
+                  href="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 mb-3 p-2 -m-2 rounded-lg hover:bg-slate-700/50 transition-colors cursor-pointer"
+                >
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold">
-                    {user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    {user?.nickname?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">
@@ -195,7 +205,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       {user?.email || ''}
                     </p>
                   </div>
-                </div>
+                </Link>
                 <button
                   onClick={logout}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"

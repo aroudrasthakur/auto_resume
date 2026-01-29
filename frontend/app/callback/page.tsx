@@ -64,7 +64,7 @@ function CallbackContent() {
               Try Sign In
             </a>
             <a
-              href="/login?signup=true"
+              href="/signup"
               className="inline-flex justify-center px-6 py-3 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800/50 hover:border-slate-600 transition-all"
             >
               Create Account

@@ -26,7 +26,7 @@ export default function LandingPage() {
                 Sign In
               </Link>
               <Link
-                href="/login?signup=true"
+                href="/signup"
                 className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-lg shadow-violet-500/25"
               >
                 Get Started
@@ -66,7 +66,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="/login?signup=true"
+                href="/signup"
                 className="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-2xl shadow-violet-500/30 hover:shadow-violet-500/40 hover:scale-105"
               >
                 Start Building for Free
@@ -268,7 +268,7 @@ export default function LandingPage() {
               Join thousands of job seekers who have improved their application success rate with AI-powered resumes.
             </p>
             <Link
-              href="/login?signup=true"
+              href="/signup"
               className="inline-flex px-8 py-4 text-lg font-semibold rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-2xl shadow-violet-500/30 hover:shadow-violet-500/40 hover:scale-105"
             >
               Create Your Resume Now
