@@ -1,4 +1,4 @@
-﻿# AI Resume Creator Setup Script
+# AI Resume Creator Setup Script
 # Run this script to help set up your environment
 
 Set-StrictMode -Version Latest
@@ -197,10 +197,11 @@ Write-Host ""
 Write-Host ".env file created successfully." -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "1. Activate virtual environment: .\venv\Scripts\Activate.ps1"
-Write-Host "2. Install dependencies: pip install -r requirements.txt"
+Write-Host "1. Create/activate virtual environment (PowerShell):"
+Write-Host "   python -m venv .venv"
+Write-Host "   .\.venv\Scripts\Activate.ps1"
+Write-Host "2. Install dependencies: pip install -r requirements.txt -r requirements-dev.txt"
 Write-Host "3. Install shared package: pip install -e ./shared"
-Write-Host "4. Install dev dependencies: pip install -r requirements-dev.txt"
-Write-Host "5. Run migrations: cd migrations; alembic upgrade head"
-Write-Host "6. Start services (see QUICK_START.md)"
+Write-Host "4. Run migrations: cd migrations; alembic upgrade head"
+Write-Host "5. Start services (see STARTUP_GUIDE.md)"
 Write-Host ""
