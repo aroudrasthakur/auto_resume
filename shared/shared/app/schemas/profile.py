@@ -56,3 +56,17 @@ class ProfileResponse(BaseModel):
     created_at: str
     updated_at: str
 
+
+class ProfileCompletenessResponse(BaseModel):
+    """Profile completeness check response."""
+
+    is_complete: bool = Field(..., description="Whether profile is ready for resume generation")
+    missing_sections: List[str] = Field(
+        default_factory=list,
+        description="Sections that need to be filled: profile, contacts, experience, education",
+    )
+    profile_id: Optional[str] = Field(
+        None,
+        description="Profile ID checked; null if user has no profile",
+    )
+

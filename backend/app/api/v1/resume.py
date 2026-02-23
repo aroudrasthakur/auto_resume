@@ -49,6 +49,18 @@ async def generate_resume(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
+    # Check profile completeness before generating
+    completeness = profile_service.check_completeness(UUID(generate_request.profile_id))
+    if not completeness.is_complete:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "detail": "Profile not set up. Please add your information, experience, and education before generating a resume.",
+                "code": "PROFILE_INCOMPLETE",
+                "missing_sections": completeness.missing_sections,
+            },
+        )
+
     # Get job description
     jd_text = generate_request.job_description_text
     jd_id = generate_request.job_description_id

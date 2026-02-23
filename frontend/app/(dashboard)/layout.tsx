@@ -8,6 +8,7 @@ import {
   User, 
   Briefcase, 
   FileText, 
+  GraduationCap,
   LogOut,
   Loader2,
   Menu,
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Experience', href: '/experience', icon: Briefcase },
+  { name: 'Education', href: '/education', icon: GraduationCap },
   { name: 'Generate Resume', href: '/generate', icon: FileText },
 ]
 
