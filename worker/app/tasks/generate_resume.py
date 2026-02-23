@@ -4,6 +4,7 @@ import json
 from typing import Dict
 
 from celery import Task
+from shared.app.constants import GenerationStatus
 from supabase import Client, create_client
 
 from app.ai.provider import get_ai_provider
@@ -12,12 +13,9 @@ from app.core.config import settings
 from app.latex.compiler import compile_pdf
 from app.latex.renderer import render_latex
 from app.storage.client import upload_file
-from shared.app.constants import GenerationStatus
 
 # Initialize Supabase client
-supabase: Client = create_client(
-    settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY
-)
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
 def _update_step(generated_resume_id: str, step: str) -> None:
@@ -43,10 +41,7 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
     """
     try:
         result = (
-            supabase.table("generated_resume")
-            .select("*")
-            .eq("id", generated_resume_id)
-            .execute()
+            supabase.table("generated_resume").select("*").eq("id", generated_resume_id).execute()
         )
 
         if not result.data:
@@ -130,7 +125,10 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
 
     except Exception as e:
         supabase.table("generated_resume").update(
-            {"status": GenerationStatus.FAILED, "current_step": None, "failure_reason": str(e)}
+            {
+                "status": GenerationStatus.FAILED,
+                "current_step": None,
+                "failure_reason": str(e),
+            }
         ).eq("id", generated_resume_id).execute()
         raise
-

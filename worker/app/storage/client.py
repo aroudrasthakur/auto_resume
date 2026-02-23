@@ -11,9 +11,7 @@ def get_storage_client() -> Client:
     """Get Supabase storage client."""
     global _supabase_client
     if _supabase_client is None:
-        _supabase_client = create_client(
-            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY
-        )
+        _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
     return _supabase_client
 
 
@@ -30,4 +28,3 @@ def upload_file(storage_key: str, file_bytes: bytes, mime_type: str) -> None:
     client.storage.from_("generated-resumes").upload(
         storage_key, file_bytes, file_options={"content-type": mime_type}
     )
-

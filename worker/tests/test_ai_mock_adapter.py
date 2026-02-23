@@ -1,6 +1,6 @@
 """Tests for mock AI adapter."""
 
-from worker.app.ai.mock_adapter import MockAdapter
+from app.ai.mock_adapter import MockAdapter
 
 
 def test_mock_adapter_generate_content():
@@ -28,4 +28,3 @@ def test_mock_adapter_generate_content():
     assert "education" in result
     assert "experience" in result
     assert adapter.get_provider_name() == "mock"
-

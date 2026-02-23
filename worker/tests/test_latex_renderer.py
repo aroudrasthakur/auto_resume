@@ -1,6 +1,6 @@
 """Tests for LaTeX rendering."""
 
-from worker.app.latex.renderer import render_latex
+from app.latex.renderer import render_latex
 
 
 def test_render_latex_basic():
@@ -17,4 +17,3 @@ def test_render_latex_basic():
     result = render_latex(profile_data, ai_output, True, True)
     assert "\\documentclass{resume}" in result
     assert "John Doe" in result
-

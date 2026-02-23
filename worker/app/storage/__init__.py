@@ -1,2 +1,1 @@
 """Storage client for Supabase."""
-

@@ -1,7 +1,8 @@
 """Pytest fixtures for worker tests."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture
@@ -31,4 +32,3 @@ def profile_snapshot():
         "projects": [],
         "skills": [],
     }
-

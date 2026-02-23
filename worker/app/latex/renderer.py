@@ -4,7 +4,6 @@ import os
 from typing import Dict
 
 from jinja2 import Environment, FileSystemLoader
-
 from shared.app.utils.latex import escape_latex
 
 
@@ -27,9 +26,7 @@ def render_latex(
         Rendered LaTeX content
     """
     # Get template directory
-    template_dir = os.path.join(
-        os.path.dirname(__file__), "../../../templates/jakes-resume"
-    )
+    template_dir = os.path.join(os.path.dirname(__file__), "../../../templates/jakes-resume")
 
     # Setup Jinja2 environment
     env = Environment(
@@ -79,4 +76,3 @@ def render_latex(
 
     # Render template
     return template.render(**context)
-

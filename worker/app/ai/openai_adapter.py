@@ -35,4 +35,3 @@ class OpenAIAdapter(AIProvider):
     def get_provider_name(self) -> str:
         """Get provider name."""
         return "openai"
-

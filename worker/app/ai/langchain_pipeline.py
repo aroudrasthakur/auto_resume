@@ -5,10 +5,10 @@ from typing import Any, Callable, Dict, Optional
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_openai import ChatOpenAI
+from shared.app.constants import PAGE_COUNT_LIMITS
 
 from app.core.config import settings
 from app.prompts import load_prompt
-from shared.app.constants import PAGE_COUNT_LIMITS
 
 TEMPLATE_SNIPPET = """Jakes Resume Template Structure:
 - Education: school, location, start_date, end_date, degree, major, gpa, highlights (array of strings)
@@ -99,16 +99,18 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
             highlights = edu.get("highlights", edu.get("education_highlight", []))
             if highlights and isinstance(highlights[0], dict):
                 highlights = [h.get("highlight", h.get("bullet", str(h))) for h in highlights]
-            result["education"].append({
-                "school": edu.get("school", ""),
-                "location": edu.get("location"),
-                "start_date": edu.get("start_date"),
-                "end_date": edu.get("end_date"),
-                "degree": edu.get("degree"),
-                "major": edu.get("major"),
-                "gpa": edu.get("gpa"),
-                "highlights": highlights if isinstance(highlights, list) else [],
-            })
+            result["education"].append(
+                {
+                    "school": edu.get("school", ""),
+                    "location": edu.get("location"),
+                    "start_date": edu.get("start_date"),
+                    "end_date": edu.get("end_date"),
+                    "degree": edu.get("degree"),
+                    "major": edu.get("major"),
+                    "gpa": edu.get("gpa"),
+                    "highlights": highlights if isinstance(highlights, list) else [],
+                }
+            )
 
     for exp in output.get("experience", []):
         if isinstance(exp, dict):
@@ -119,15 +121,17 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
                     bullets.append({"bullet": b.get("bullet", b.get("highlight", str(b)))})
                 else:
                     bullets.append({"bullet": str(b)})
-            result["experience"].append({
-                "company": exp.get("company", ""),
-                "location": exp.get("location"),
-                "start_date": exp.get("start_date"),
-                "end_date": exp.get("end_date"),
-                "role": exp.get("role", ""),
-                "is_current": exp.get("is_current", False),
-                "bullets": bullets,
-            })
+            result["experience"].append(
+                {
+                    "company": exp.get("company", ""),
+                    "location": exp.get("location"),
+                    "start_date": exp.get("start_date"),
+                    "end_date": exp.get("end_date"),
+                    "role": exp.get("role", ""),
+                    "is_current": exp.get("is_current", False),
+                    "bullets": bullets,
+                }
+            )
 
     if include_projects:
         for proj in output.get("projects", []):
@@ -140,15 +144,19 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
                     else:
                         bullets.append({"bullet": str(b)})
                 tech_raw = proj.get("technologies", proj.get("project_tech", []))
-                technologies = [t.get("tech", str(t)) if isinstance(t, dict) else str(t) for t in tech_raw]
-                result["projects"].append({
-                    "name": proj.get("name", ""),
-                    "start_date": proj.get("start_date"),
-                    "end_date": proj.get("end_date"),
-                    "role": proj.get("role"),
-                    "bullets": bullets,
-                    "technologies": technologies,
-                })
+                technologies = [
+                    t.get("tech", str(t)) if isinstance(t, dict) else str(t) for t in tech_raw
+                ]
+                result["projects"].append(
+                    {
+                        "name": proj.get("name", ""),
+                        "start_date": proj.get("start_date"),
+                        "end_date": proj.get("end_date"),
+                        "role": proj.get("role"),
+                        "bullets": bullets,
+                        "technologies": technologies,
+                    }
+                )
 
     if include_skills:
         skills_raw = output.get("skills", [])
@@ -157,11 +165,15 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
         for cat in skills_raw:
             if isinstance(cat, dict):
                 items_raw = cat.get("items", cat.get("skill_item", []))
-                items = [i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items_raw]
-                result["skills"]["categories"].append({
-                    "name": cat.get("name", ""),
-                    "items": items,
-                })
+                items = [
+                    i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items_raw
+                ]
+                result["skills"]["categories"].append(
+                    {
+                        "name": cat.get("name", ""),
+                        "items": items,
+                    }
+                )
 
     return result
 
@@ -219,6 +231,7 @@ def run_pipeline(
     Run the 2-step pipeline: (1) generate ATS bullets, (2) finalize resume.
     Applies page limits in code after step 1.
     """
+
     def _step(s: str) -> None:
         if update_step:
             update_step(s)

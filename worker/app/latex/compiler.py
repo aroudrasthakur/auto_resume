@@ -16,11 +16,22 @@ def _get_engines():
     pdflatex_path = (settings.PDFLATEX_PATH or "").strip()
     if pdflatex_path and Path(pdflatex_path).exists():
         return [
-            ("pdflatex", [pdflatex_path, "-interaction=nonstopmode", "-halt-on-error", "resume.tex"]),
+            (
+                "pdflatex",
+                [
+                    pdflatex_path,
+                    "-interaction=nonstopmode",
+                    "-halt-on-error",
+                    "resume.tex",
+                ],
+            ),
             ("tectonic", ["tectonic", "--outdir", ".", "--untrusted", "resume.tex"]),
         ]
     return [
-        ("pdflatex", ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"]),
+        (
+            "pdflatex",
+            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "resume.tex"],
+        ),
         ("tectonic", ["tectonic", "--outdir", ".", "--untrusted", "resume.tex"]),
     ]
 
@@ -92,4 +103,3 @@ def compile_pdf(latex_content: str) -> bytes:
         if last_error:
             raise last_error
         raise RuntimeError("PDF file was not generated")
-
