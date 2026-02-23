@@ -197,8 +197,9 @@ class ProfileService:
         """
         Check if a profile is complete for resume generation.
 
-        Complete means: profile exists with name, at least one contact,
-        at least one experience with at least one bullet, at least one education.
+        Order: profile, education, experience, projects, skills.
+        Complete means: profile with name + contacts, education, experience with bullet,
+        project with bullet, skill category with item.
         """
         missing: List[str] = []
 
@@ -221,7 +222,7 @@ class ProfileService:
 
         profile_id_str = str(profile_id)
 
-        # Check profile exists with name
+        # 1. Profile: exists with name
         profile_result = (
             self.supabase.table("profile")
             .select("name")
@@ -238,7 +239,7 @@ class ProfileService:
         if not (profile_result.data[0].get("name") or "").strip():
             missing.append("profile")
 
-        # Check contacts
+        # 2. Contacts
         contacts_result = (
             self.supabase.table("profile_contact")
             .select("id")
@@ -246,11 +247,22 @@ class ProfileService:
             .eq("user_id", self.user_id)
             .execute()
         )
-        contact_count = len(contacts_result.data) if contacts_result.data else 0
-        if contact_count < 1:
+        if not contacts_result.data or len(contacts_result.data) < 1:
             missing.append("contacts")
 
-        # Check experience with at least one bullet
+        # 3. Education
+        edu_result = (
+            self.supabase.table("education")
+            .select("id")
+            .eq("profile_id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .limit(1)
+            .execute()
+        )
+        if not edu_result.data:
+            missing.append("education")
+
+        # 4. Experience with at least one bullet
         exp_result = (
             self.supabase.table("experience")
             .select("id")
@@ -274,17 +286,53 @@ class ProfileService:
         if not has_valid_experience:
             missing.append("experience")
 
-        # Check education
-        edu_result = (
-            self.supabase.table("education")
+        # 5. Projects with at least one bullet
+        proj_result = (
+            self.supabase.table("project")
             .select("id")
             .eq("profile_id", profile_id_str)
             .eq("user_id", self.user_id)
-            .limit(1)
             .execute()
         )
-        if not edu_result.data:
-            missing.append("education")
+        projects = proj_result.data or []
+        has_valid_project = False
+        for proj in projects:
+            bullet_result = (
+                self.supabase.table("project_bullet")
+                .select("id")
+                .eq("project_id", proj["id"])
+                .limit(1)
+                .execute()
+            )
+            if bullet_result.data:
+                has_valid_project = True
+                break
+        if not has_valid_project:
+            missing.append("projects")
+
+        # 6. Skills: at least one category with at least one item
+        skill_cat_result = (
+            self.supabase.table("skill_category")
+            .select("id")
+            .eq("profile_id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .execute()
+        )
+        categories = skill_cat_result.data or []
+        has_valid_skill = False
+        for cat in categories:
+            item_result = (
+                self.supabase.table("skill_item")
+                .select("id")
+                .eq("category_id", cat["id"])
+                .limit(1)
+                .execute()
+            )
+            if item_result.data:
+                has_valid_skill = True
+                break
+        if not has_valid_skill:
+            missing.append("skills")
 
         return ProfileCompletenessResponse(
             is_complete=len(missing) == 0,

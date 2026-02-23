@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@/lib/auth-context'
 import { useDisplayUser } from '@/lib/use-display-user'
 import { apiFetch } from '@/lib/api'
-import { ArrowLeft, Mail, Briefcase, GraduationCap, Plus } from 'lucide-react'
+import { ArrowLeft, Mail, Briefcase, GraduationCap, Plus, Pencil, MapPin, FileText, Code2, Wrench } from 'lucide-react'
 
 interface Contact {
   contact_kind: string
@@ -22,12 +21,101 @@ interface ProfileData {
   contacts: { id: string; contact_kind: string; label?: string; value: string }[]
 }
 
+const CONTACT_LABELS: Record<string, string> = {
+  email: 'Email',
+  phone: 'Phone',
+  linkedin: 'LinkedIn',
+  github: 'GitHub',
+  website: 'Website',
+}
+
+function ProfileView({ profile, onEdit }: { profile: ProfileData; onEdit: () => void }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-heading text-xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>
+            {profile.name}
+          </h3>
+          {profile.headline && (
+            <p className="mt-1 font-body text-muted">{profile.headline}</p>
+          )}
+          {profile.location && (
+            <p className="mt-1 flex items-center gap-2 font-body text-sm text-muted">
+              <MapPin className="h-4 w-4 shrink-0" />
+              {profile.location}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors"
+        >
+          <Pencil className="h-4 w-4" />
+          Edit
+        </button>
+      </div>
+
+      {profile.summary && (
+        <div>
+          <h4 className="font-mono text-xs uppercase text-muted mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
+            Summary
+          </h4>
+          <p className="font-body text-text whitespace-pre-wrap">{profile.summary}</p>
+        </div>
+      )}
+
+      {profile.contacts && profile.contacts.length > 0 && (
+        <div>
+          <h4 className="font-mono text-xs uppercase text-muted mb-2" style={{ fontFamily: 'var(--font-mono)' }}>
+            Contact
+          </h4>
+          <ul className="space-y-2">
+            {profile.contacts.map((c) => (
+              <li key={c.id} className="flex items-center gap-2 font-body text-text">
+                <Mail className="h-4 w-4 shrink-0 text-muted" />
+                <span className="text-muted w-20">{CONTACT_LABELS[c.contact_kind] || c.contact_kind}</span>
+                <span>{c.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EmptyProfileView({ onEdit }: { onEdit: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-b2 text-muted mb-4">
+        <FileText className="h-8 w-8" />
+      </div>
+      <p className="font-body text-muted mb-4">No profile added yet.</p>
+      <p className="font-body text-sm text-muted mb-6 max-w-sm">
+        Add your name, headline, summary, and contact info to build your resume.
+      </p>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="inline-flex items-center gap-2 rounded px-4 py-2.5 font-body text-sm font-semibold text-[var(--bg)] transition-transform hover:scale-[1.02]"
+        style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
+      >
+        <Plus className="h-4 w-4" />
+        Add profile
+      </button>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { displayName, initial, email: userEmail } = useDisplayUser()
   const [profiles, setProfiles] = useState<ProfileData[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const [editingProfile, setEditingProfile] = useState<ProfileData | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -37,35 +125,49 @@ export default function ProfilePage() {
     contacts: [] as Contact[],
   })
 
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      setError(null)
-      const res = await apiFetch<ProfileData[]>('/profiles')
-      if (res.ok && res.data !== undefined) {
-        const data = Array.isArray(res.data) ? res.data : []
-        setProfiles(data)
-        if (data.length > 0) {
-          setEditingProfile(data[0])
-          setFormData({
-            name: data[0].name || '',
-            headline: data[0].headline || '',
-            summary: data[0].summary || '',
-            location: data[0].location || '',
-            contacts: (data[0].contacts || []).map((c: { contact_kind: string; label?: string; value: string }) => ({
-              contact_kind: c.contact_kind,
-              label: c.label,
-              value: c.value,
-            })),
-          })
-        }
-      } else {
-        const message = res.error ?? (res.status === 401 ? 'Please log in again.' : 'Failed to load profiles.')
-        setError(message)
-      }
-      setLoading(false)
+  const currentProfile = profiles.length > 0 ? profiles[0] : null
+
+  const fetchProfiles = async () => {
+    setError(null)
+    const res = await apiFetch<ProfileData[]>('/profiles')
+    if (res.ok && res.data !== undefined) {
+      const data = Array.isArray(res.data) ? res.data : []
+      setProfiles(data)
+    } else {
+      setError(res.error ?? 'Failed to load profiles.')
     }
+    setLoading(false)
+  }
+
+  useEffect(() => {
     fetchProfiles()
   }, [])
+
+  useEffect(() => {
+    if (isEditing && currentProfile) {
+      setEditingProfile(currentProfile)
+      setFormData({
+        name: currentProfile.name || '',
+        headline: currentProfile.headline || '',
+        summary: currentProfile.summary || '',
+        location: currentProfile.location || '',
+        contacts: (currentProfile.contacts || []).map((c) => ({
+          contact_kind: c.contact_kind,
+          label: c.label,
+          value: c.value,
+        })),
+      })
+    } else if (isEditing && !currentProfile) {
+      setEditingProfile(null)
+      setFormData({
+        name: displayName || '',
+        headline: '',
+        summary: '',
+        location: '',
+        contacts: [],
+      })
+    }
+  }, [isEditing, currentProfile?.id, currentProfile, displayName])
 
   const handleCreateContact = () => {
     setFormData((prev) => ({
@@ -96,7 +198,7 @@ export default function ProfilePage() {
     setError(null)
 
     const payload = {
-      name: formData.name || user?.name || 'Resume',
+      name: formData.name || displayName || 'Resume',
       headline: formData.headline || undefined,
       summary: formData.summary || undefined,
       location: formData.location || undefined,
@@ -122,12 +224,13 @@ export default function ProfilePage() {
             headline: updated.headline || '',
             summary: updated.summary || '',
             location: updated.location || '',
-            contacts: (updated.contacts || []).map((c: { contact_kind: string; label?: string; value: string }) => ({
+            contacts: (updated.contacts || []).map((c) => ({
               contact_kind: c.contact_kind,
               label: c.label,
               value: c.value,
             })),
           })
+          setIsEditing(false)
         } else {
           setError(res.error ?? 'Failed to update profile')
         }
@@ -145,12 +248,13 @@ export default function ProfilePage() {
             headline: created.headline || '',
             summary: created.summary || '',
             location: created.location || '',
-            contacts: (created.contacts || []).map((c: { contact_kind: string; label?: string; value: string }) => ({
+            contacts: (created.contacts || []).map((c) => ({
               contact_kind: c.contact_kind,
               label: c.label,
               value: c.value,
             })),
           })
+          setIsEditing(false)
         } else {
           setError(res.error ?? 'Failed to create profile')
         }
@@ -163,7 +267,22 @@ export default function ProfilePage() {
     }
   }
 
-  const { displayName, initial } = useDisplayUser()
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    if (currentProfile) {
+      setFormData({
+        name: currentProfile.name || '',
+        headline: currentProfile.headline || '',
+        summary: currentProfile.summary || '',
+        location: currentProfile.location || '',
+        contacts: (currentProfile.contacts || []).map((c) => ({
+          contact_kind: c.contact_kind,
+          label: c.label,
+          value: c.value,
+        })),
+      })
+    }
+  }
 
   const inputClass = 'w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none'
   const labelClass = 'mb-1 block font-mono text-xs uppercase text-muted'
@@ -188,10 +307,10 @@ export default function ProfilePage() {
           </div>
           <div>
             <h2 className="font-heading text-xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>{displayName}</h2>
-            {user?.email && (
+            {userEmail && (
               <p className="mt-1 flex items-center gap-2 font-body text-sm text-muted">
                 <Mail className="h-4 w-4" />
-                {user.email}
+                {userEmail}
               </p>
             )}
           </div>
@@ -214,7 +333,7 @@ export default function ProfilePage() {
           <div className="px-6 py-8">
             <p className="font-body text-muted">Loading…</p>
           </div>
-        ) : (
+        ) : isEditing ? (
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-5">
             {error && (
               <div className="rounded border border-red-500/50 bg-red-500/10 px-4 py-3 font-body text-sm text-red-400">
@@ -271,31 +390,54 @@ export default function ProfilePage() {
               ))}
             </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full rounded py-2.5 font-body text-sm font-semibold text-[var(--bg)] disabled:opacity-50 transition-transform hover:scale-[1.01]"
-              style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
-            >
-              {saving ? 'Saving…' : editingProfile ? 'Update profile' : 'Create profile'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 rounded py-2.5 font-body text-sm font-semibold text-[var(--bg)] disabled:opacity-50 transition-transform hover:scale-[1.01]"
+                style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
+              >
+                {saving ? 'Saving…' : editingProfile ? 'Update profile' : 'Create profile'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                disabled={saving}
+                className="rounded border border-b2 px-4 py-2.5 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
+        ) : currentProfile ? (
+          <div className="px-6 py-6">
+            <ProfileView profile={currentProfile} onEdit={() => setIsEditing(true)} />
+          </div>
+        ) : (
+          <div className="px-6 py-6">
+            <EmptyProfileView onEdit={() => setIsEditing(true)} />
+          </div>
         )}
 
-        {profiles.length > 0 && (
+        {profiles.length > 0 && !isEditing && (
           <div className="border-t border-b1 px-6 py-4">
             <h3 className="font-mono text-xs uppercase text-muted mb-3" style={labelStyle}>Next steps</h3>
             <div className="flex flex-wrap gap-3">
-              <Link href="/experience" className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors">
-                <Briefcase className="w-4 h-4" />
-                Add experience
-              </Link>
               <Link href="/education" className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors">
                 <GraduationCap className="w-4 h-4" />
                 Add education
               </Link>
-              <Link href="/generate" className="inline-flex items-center gap-2 rounded px-3 py-2 font-body text-sm font-semibold text-[var(--bg)] transition-transform hover:scale-[1.02]" style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}>
-                Generate resume
+              <Link href="/experience" className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors">
+                <Briefcase className="w-4 h-4" />
+                Add experience
+              </Link>
+              <Link href="/projects" className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors">
+                <Code2 className="w-4 h-4" />
+                Add projects
+              </Link>
+              <Link href="/skills" className="inline-flex items-center gap-2 rounded border border-b2 px-3 py-2 font-body text-sm text-text hover:border-gold hover:text-gold transition-colors">
+                <Wrench className="w-4 h-4" />
+                Add skills
               </Link>
             </div>
           </div>

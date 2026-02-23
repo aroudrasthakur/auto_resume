@@ -36,9 +36,58 @@ async def list_projects(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """List all projects."""
-    result = supabase.table("project").select("*").eq("user_id", current_user["user_id"]).execute()
+    """List all projects with bullets."""
+    result = (
+        supabase.table("project")
+        .select("*, project_bullet(*)")
+        .eq("user_id", current_user["user_id"])
+        .order("start_date", desc=True)
+        .execute()
+    )
     return result.data or []
+
+
+@router.post("/{project_id}/bullets", status_code=status.HTTP_201_CREATED)
+@limiter.limit("100/minute")
+async def add_project_bullets(
+    request: Request,
+    project_id: UUID,
+    bullets_data: dict,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Add bullets to a project."""
+    proj_result = (
+        supabase.table("project")
+        .select("id")
+        .eq("id", str(project_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    if not proj_result.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    bullets = bullets_data.get("bullets", [])
+    if not bullets:
+        return {"added": 0}
+
+    rows = []
+    for i, bullet_text in enumerate(bullets):
+        if bullet_text and str(bullet_text).strip():
+            rows.append(
+                {
+                    "project_id": str(project_id),
+                    "user_id": current_user["user_id"],
+                    "bullet": str(bullet_text).strip(),
+                    "sort_order": i,
+                }
+            )
+
+    if not rows:
+        return {"added": 0}
+
+    result = supabase.table("project_bullet").insert(rows).execute()
+    return {"added": len(result.data or [])}
 
 
 @router.get("/{project_id}")
