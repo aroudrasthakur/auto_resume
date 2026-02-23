@@ -23,6 +23,7 @@ module.exports = {
         gold: 'var(--gold)',
         'gold-lt': 'var(--gold-lt)',
         green: 'var(--green)',
+        red: 'var(--red)',
         b3: 'var(--b3)',
         /* Legacy */
         border: "hsl(var(--border))",
