@@ -4,9 +4,12 @@ import json
 from typing import List
 from uuid import UUID
 
-from shared.app.utils.compress import compress_text, pack_profile_snapshot
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from shared.app.schemas.resume_request import (
+    ResumeGenerateRequest,
+    ResumeGenerateResponse,
+)
+from shared.app.utils.compress import compress_text, pack_profile_snapshot
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -14,10 +17,6 @@ from app.auth.dependencies import get_current_user
 from app.core.config import settings
 from app.core.db import get_supabase_client
 from app.services.profile import ProfileService
-from shared.app.schemas.resume_request import (
-    ResumeGenerateRequest,
-    ResumeGenerateResponse,
-)
 
 # Import Celery app (will be available at runtime)
 try:
@@ -80,9 +79,7 @@ async def generate_resume(
         jd_text = jd_result.data[0]["raw_text"]
 
     if not jd_text:
-        raise HTTPException(
-            status_code=400, detail="Job description text or ID required"
-        )
+        raise HTTPException(status_code=400, detail="Job description text or ID required")
 
     # Get template
     template_result = (
@@ -145,9 +142,7 @@ async def generate_resume(
     )
 
     if not gen_resume_result.data:
-        raise HTTPException(
-            status_code=500, detail="Failed to create resume generation record"
-        )
+        raise HTTPException(status_code=500, detail="Failed to create resume generation record")
 
     generated_resume_id = gen_resume_result.data[0]["id"]
 
@@ -231,9 +226,8 @@ async def get_resume_files(
     for file in files:
         storage_key = file["storage_key"]
         # Generate presigned URL (valid for 1 hour)
-        url_result = (
-            supabase.storage.from_("generated-resumes")
-            .create_signed_url(storage_key, 3600)
+        url_result = supabase.storage.from_("generated-resumes").create_signed_url(
+            storage_key, 3600
         )
         file["download_url"] = url_result.get("signedURL")
 
@@ -271,7 +265,9 @@ async def list_resumes(
     """List user's generated resumes with profile name."""
     result = (
         supabase.table("generated_resume")
-        .select("id, user_id, profile_id, job_description_id, template_id, status, page_count, include_projects, include_skills, created_at, updated_at, failure_reason, profile(name)")
+        .select(
+            "id, user_id, profile_id, job_description_id, template_id, status, page_count, include_projects, include_skills, created_at, updated_at, failure_reason, profile(name)"
+        )
         .eq("user_id", current_user["user_id"])
         .order("created_at", desc=True)
         .execute()
@@ -287,4 +283,3 @@ async def list_resumes(
         else:
             r["profile_name"] = ""
     return data
-

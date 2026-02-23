@@ -37,12 +37,7 @@ async def list_projects(
     supabase=Depends(get_supabase_client),
 ):
     """List all projects."""
-    result = (
-        supabase.table("project")
-        .select("*")
-        .eq("user_id", current_user["user_id"])
-        .execute()
-    )
+    result = supabase.table("project").select("*").eq("user_id", current_user["user_id"]).execute()
     return result.data or []
 
 
@@ -107,4 +102,3 @@ async def delete_project(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Project not found")
-

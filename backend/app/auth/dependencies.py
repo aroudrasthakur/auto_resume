@@ -65,4 +65,3 @@ async def get_current_user(
             detail=f"Invalid token: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-

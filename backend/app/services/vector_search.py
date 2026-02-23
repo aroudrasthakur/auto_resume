@@ -101,4 +101,3 @@ class VectorSearchService:
 
         result = self.supabase.rpc("exec_sql", {"query": query}).execute()
         return result.data if result.data else []
-

@@ -21,4 +21,3 @@ def test_encrypt_decrypt_contact(mock_encryption_key):
     ciphertext, nonce, auth_tag, key_version = encrypt_contact(plaintext)
     decrypted = decrypt_contact(ciphertext, nonce, auth_tag, key_version)
     assert decrypted == plaintext
-

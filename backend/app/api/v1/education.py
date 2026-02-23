@@ -74,12 +74,14 @@ async def add_education_highlights(
     rows = []
     for i, text in enumerate(highlights):
         if text and str(text).strip():
-            rows.append({
-                "education_id": str(education_id),
-                "user_id": current_user["user_id"],
-                "highlight": str(text).strip(),
-                "sort_order": i,
-            })
+            rows.append(
+                {
+                    "education_id": str(education_id),
+                    "user_id": current_user["user_id"],
+                    "highlight": str(text).strip(),
+                    "sort_order": i,
+                }
+            )
 
     if not rows:
         return {"added": 0}
@@ -149,4 +151,3 @@ async def delete_education(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Education not found")
-

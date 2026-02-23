@@ -77,7 +77,9 @@ def login(request: LoginRequest):
             "id_token": "dev-id-token",
             "refresh_token": "dev-refresh-token",
             "expires_in": 3600,
-            "expires_at": int((datetime.now(timezone.utc) + timedelta(seconds=3600)).timestamp() * 1000),
+            "expires_at": int(
+                (datetime.now(timezone.utc) + timedelta(seconds=3600)).timestamp() * 1000
+            ),
         }
         return LoginResponse(**fake_tokens)
 
@@ -116,7 +118,9 @@ def login(request: LoginRequest):
         logger.exception("Login failed: %s", exc)
         detail = "Login failed."
         if "credentials" in str(exc).lower() or "NoCredentialsError" in type(exc).__name__:
-            detail = "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+            detail = (
+                "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+            )
         raise HTTPException(status_code=500, detail=detail) from exc
 
 
@@ -177,6 +181,7 @@ def signup(request: SignupRequest):
         logger.exception("Signup failed: %s", exc)
         detail = "Signup failed."
         if "credentials" in str(exc).lower() or "NoCredentialsError" in type(exc).__name__:
-            detail = "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+            detail = (
+                "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+            )
         raise HTTPException(status_code=500, detail=detail) from exc
-

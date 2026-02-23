@@ -94,4 +94,3 @@ async def verify_cognito_token(token: str) -> Dict:
         raise CognitoTokenError(f"Invalid token: {e}") from e
     except Exception as e:
         raise CognitoTokenError(f"Token verification failed: {e}") from e
-

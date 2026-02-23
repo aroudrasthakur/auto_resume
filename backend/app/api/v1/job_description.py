@@ -80,4 +80,3 @@ async def get_job_description(
     if not result.data:
         raise HTTPException(status_code=404, detail="Job description not found")
     return result.data[0]
-

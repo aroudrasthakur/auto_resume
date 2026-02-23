@@ -65,4 +65,3 @@ async def delete_skill_category(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Category not found")
-

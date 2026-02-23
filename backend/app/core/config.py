@@ -17,8 +17,9 @@ try:
     from pydantic import field_validator
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
-    from pydantic import BaseSettings, field_validator
+    from pydantic import BaseSettings
     from pydantic import ConfigDict as SettingsConfigDict
+    from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -79,4 +80,3 @@ if not settings.COGNITO_JWKS_URL and settings.COGNITO_USER_POOL_ID:
 # Validate production settings
 if settings.ENVIRONMENT == "production" and settings.DEV_AUTH_BYPASS:
     raise ValueError("DEV_AUTH_BYPASS cannot be True in production")
-

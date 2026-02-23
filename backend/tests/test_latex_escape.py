@@ -14,4 +14,3 @@ def test_escape_latex_empty():
     """Test empty string."""
     assert escape_latex("") == ""
     assert escape_latex(None) == ""
-
