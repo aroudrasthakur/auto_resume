@@ -4,7 +4,6 @@ import os
 from typing import Dict
 
 from jinja2 import Environment, FileSystemLoader
-
 from shared.app.utils.latex import escape_latex
 
 
@@ -27,9 +26,7 @@ def render_latex(
         Rendered LaTeX content
     """
     # Get template directory
-    template_dir = os.path.join(
-        os.path.dirname(__file__), "../../../templates/jakes-resume"
-    )
+    template_dir = os.path.join(os.path.dirname(__file__), "../../../templates/jakes-resume")
 
     # Setup Jinja2 environment
     env = Environment(
@@ -60,18 +57,22 @@ def render_latex(
         elif kind == "website":
             contact_dict["website"] = escape_latex(value)
 
-    # Prepare template context
+    # Normalize skills: ai_output may have {"categories": [...]} or a raw list
+    skills_raw = ai_output.get("skills", [])
+    skills_categories = (
+        skills_raw.get("categories", skills_raw) if isinstance(skills_raw, dict) else skills_raw
+    )
+
     context = {
         "name": escape_latex(profile.get("name", "")),
         **contact_dict,
         "education": ai_output.get("education", []),
         "experience": ai_output.get("experience", []),
         "projects": ai_output.get("projects", []) if include_projects else [],
-        "skills": {"categories": ai_output.get("skills", [])} if include_skills else None,
+        "skills": {"categories": skills_categories} if include_skills else None,
         "include_projects": include_projects,
         "include_skills": include_skills,
     }
 
     # Render template
     return template.render(**context)
-

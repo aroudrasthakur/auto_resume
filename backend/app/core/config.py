@@ -4,16 +4,22 @@ import os
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
+
+# Project root and .env path (backend/app/core/config.py -> 4 levels up)
+_project_root = Path(__file__).resolve().parent.parent.parent.parent
+_env_file = _project_root / ".env"
+
+# Load .env into os.environ so shared modules (e.g. encryption) can use os.getenv
+load_dotenv(_env_file)
+
 try:
+    from pydantic import field_validator
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
     from pydantic import BaseSettings
     from pydantic import ConfigDict as SettingsConfigDict
-
-
-# Get project root (two levels up from backend/app/core/config.py)
-_project_root = Path(__file__).parent.parent.parent.parent
-_env_file = _project_root / ".env"
+    from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -28,9 +34,19 @@ class Settings(BaseSettings):
     # Auth
     COGNITO_USER_POOL_ID: str = ""
     COGNITO_CLIENT_ID: str = ""
+    COGNITO_CLIENT_SECRET: str = ""  # Required when app client has a secret
     COGNITO_REGION: str = "us-east-1"
     COGNITO_JWKS_URL: str = ""
     DEV_AUTH_BYPASS: bool = False
+
+    @field_validator("DEV_AUTH_BYPASS", mode="before")
+    @classmethod
+    def parse_dev_auth_bypass(cls, v):
+        if v is None or v == "":
+            return False
+        if isinstance(v, bool):
+            return v
+        return str(v).lower() in ("true", "1", "yes")
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
@@ -64,4 +80,3 @@ if not settings.COGNITO_JWKS_URL and settings.COGNITO_USER_POOL_ID:
 # Validate production settings
 if settings.ENVIRONMENT == "production" and settings.DEV_AUTH_BYPASS:
     raise ValueError("DEV_AUTH_BYPASS cannot be True in production")
-

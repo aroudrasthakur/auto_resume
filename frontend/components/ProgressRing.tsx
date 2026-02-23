@@ -74,7 +74,10 @@ export default function ProgressRing({ completion, steps }: ProgressRingProps) {
           className="font-heading text-2xl text-text md:text-[1.75rem]"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
-          Profile is <em className="italic text-gold">empty.</em>
+          Profile is{' '}
+          <em className={`italic ${completion === 100 ? 'text-emerald-400' : 'text-gold'}`}>
+            {completion === 100 ? 'complete.' : completion > 0 ? 'in progress.' : 'empty.'}
+          </em>
         </h2>
         <p
           className="mt-3 font-body text-muted leading-relaxed"

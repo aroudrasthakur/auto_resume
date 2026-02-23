@@ -5,6 +5,11 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from shared.app.schemas.resume_request import (
+    ResumeGenerateRequest,
+    ResumeGenerateResponse,
+)
+from shared.app.utils.compress import compress_text, pack_profile_snapshot
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -12,10 +17,6 @@ from app.auth.dependencies import get_current_user
 from app.core.config import settings
 from app.core.db import get_supabase_client
 from app.services.profile import ProfileService
-from shared.app.schemas.resume_request import (
-    ResumeGenerateRequest,
-    ResumeGenerateResponse,
-)
 
 # Import Celery app (will be available at runtime)
 try:
@@ -78,9 +79,7 @@ async def generate_resume(
         jd_text = jd_result.data[0]["raw_text"]
 
     if not jd_text:
-        raise HTTPException(
-            status_code=400, detail="Job description text or ID required"
-        )
+        raise HTTPException(status_code=400, detail="Job description text or ID required")
 
     # Get template
     template_result = (
@@ -135,30 +134,34 @@ async def generate_resume(
                 "page_count": generate_request.page_count,
                 "include_projects": generate_request.include_projects,
                 "include_skills": generate_request.include_skills,
-                "profile_snapshot": json.dumps(profile_snapshot),
-                "jd_snapshot": jd_text,
+                "profile_snapshot": pack_profile_snapshot(profile_snapshot),
+                "jd_snapshot": compress_text(jd_text),
             }
         )
         .execute()
     )
 
     if not gen_resume_result.data:
-        raise HTTPException(
-            status_code=500, detail="Failed to create resume generation record"
-        )
+        raise HTTPException(status_code=500, detail="Failed to create resume generation record")
 
     generated_resume_id = gen_resume_result.data[0]["id"]
 
     # Enqueue Celery task
     if celery_app:
-        celery_app.send_task(
-            "worker.app.tasks.generate_resume.generate_resume",
-            args=[str(generated_resume_id)],
-        )
+        try:
+            celery_app.send_task(
+                "worker.app.tasks.generate_resume.generate_resume",
+                args=[str(generated_resume_id)],
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Worker not available. Start Redis (docker compose up -d redis) and the Celery worker (cd worker && celery -A app.celery_app worker --loglevel=info). Error: {e}",
+            ) from e
     else:
-        # Fallback: could use Redis directly or raise error
         raise HTTPException(
-            status_code=500, detail="Worker not available"
+            status_code=503,
+            detail="Worker not available. Start Redis (docker compose up -d redis) and the Celery worker (cd worker && celery -A app.celery_app worker --loglevel=info).",
         )
 
     return ResumeGenerateResponse(
@@ -223,13 +226,33 @@ async def get_resume_files(
     for file in files:
         storage_key = file["storage_key"]
         # Generate presigned URL (valid for 1 hour)
-        url_result = (
-            supabase.storage.from_("generated-resumes")
-            .create_signed_url(storage_key, 3600)
+        url_result = supabase.storage.from_("generated-resumes").create_signed_url(
+            storage_key, 3600
         )
         file["download_url"] = url_result.get("signedURL")
 
     return files
+
+
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("100/minute")
+async def delete_resume(
+    request: Request,
+    resume_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Delete a generated resume (any status including QUEUED/RUNNING)."""
+    result = (
+        supabase.table("generated_resume")
+        .delete()
+        .eq("id", str(resume_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    # Supabase delete returns deleted rows; empty means not found or not owned
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Resume not found")
 
 
 @router.get("", response_model=List[dict])
@@ -239,13 +262,24 @@ async def list_resumes(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """List user's generated resumes."""
+    """List user's generated resumes with profile name."""
     result = (
         supabase.table("generated_resume")
-        .select("*")
+        .select(
+            "id, user_id, profile_id, job_description_id, template_id, status, page_count, include_projects, include_skills, created_at, updated_at, failure_reason, profile(name)"
+        )
         .eq("user_id", current_user["user_id"])
         .order("created_at", desc=True)
         .execute()
     )
-    return result.data or []
-
+    # Flatten profile name into resume record
+    data = result.data or []
+    for r in data:
+        prof = r.pop("profile", None)
+        if isinstance(prof, dict):
+            r["profile_name"] = prof.get("name", "")
+        elif isinstance(prof, list) and prof:
+            r["profile_name"] = prof[0].get("name", "") if isinstance(prof[0], dict) else ""
+        else:
+            r["profile_name"] = ""
+    return data

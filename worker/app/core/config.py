@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSION: int = 1536
 
+    # LaTeX (optional: full path to pdflatex when not on PATH)
+    PDFLATEX_PATH: str = ""
+
     model_config = SettingsConfigDict(
         extra="ignore",  # Ignore extra fields from .env (used by backend/frontend)
         case_sensitive=True,
@@ -41,4 +44,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

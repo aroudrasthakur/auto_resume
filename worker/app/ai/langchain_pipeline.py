@@ -1,14 +1,20 @@
-"""LangChain-based multi-step resume refinement pipeline."""
+"""LangChain-based 2-step resume pipeline: generate bullets, then finalize."""
 
 import json
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from shared.app.constants import PAGE_COUNT_LIMITS
 
 from app.core.config import settings
-from shared.app.constants import PAGE_COUNT_LIMITS
+from app.prompts import load_prompt
+
+TEMPLATE_SNIPPET = """Jakes Resume Template Structure:
+- Education: school, location, start_date, end_date, degree, major, gpa, highlights (array of strings)
+- Experience: company, location, start_date, end_date, role, is_current, bullets (array of objects with "bullet" key)
+- Projects: name, start_date, end_date, role, bullets (array of {bullet}), technologies (array of strings)
+- Skills: {categories: [{name, items: [strings]}]}"""
 
 
 def _get_llm() -> ChatOpenAI:
@@ -26,7 +32,6 @@ def _get_llm() -> ChatOpenAI:
 def _transform_profile_to_flat(profile_snapshot: Dict) -> Dict:
     """
     Transform profile snapshot from DB structure to a flatter format for prompts.
-    Keeps the structure but makes it easier for the model to parse.
     """
     return {
         "profile": profile_snapshot.get("profile", {}),
@@ -37,13 +42,50 @@ def _transform_profile_to_flat(profile_snapshot: Dict) -> Dict:
     }
 
 
+def _apply_page_limits(
+    output: Dict,
+    page_count: int,
+    include_projects: bool,
+    include_skills: bool,
+) -> Dict:
+    """
+    Apply page count limits in code: trim bullets, cap projects/education.
+    """
+    limits = PAGE_COUNT_LIMITS.get(page_count, PAGE_COUNT_LIMITS[3])
+    max_bullets = limits.get("max_bullets_per_experience", 3)
+    max_projects = limits.get("max_projects", 2)
+    max_educations = limits.get("max_educations") or 10
+
+    result: Dict[str, Any] = dict(output)
+
+    # Trim education
+    edu_list = result.get("education", [])
+    if max_educations and len(edu_list) > max_educations:
+        result["education"] = edu_list[:max_educations]
+
+    # Trim experience bullets
+    for exp in result.get("experience", []):
+        bullets_raw = exp.get("bullets", exp.get("experience_bullet", []))
+        bullets = []
+        for b in bullets_raw[:max_bullets]:
+            if isinstance(b, dict):
+                bullets.append({"bullet": b.get("bullet", b.get("highlight", str(b)))})
+            else:
+                bullets.append({"bullet": str(b)})
+        exp["bullets"] = bullets
+
+    # Trim projects
+    if include_projects:
+        proj_list = result.get("projects", [])
+        if max_projects and len(proj_list) > max_projects:
+            result["projects"] = proj_list[:max_projects]
+
+    return result
+
+
 def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: bool) -> Dict:
     """
     Ensure AI output matches the template schema.
-    - education: [{school, location, start_date, end_date, degree, major, gpa, highlights: [str]}]
-    - experience: [{company, location, start_date, end_date, role, is_current, bullets: [{bullet}]}]
-    - projects: [{name, start_date, end_date, role, bullets: [{bullet}], technologies: [str]}]
-    - skills: {categories: [{name, items: [str]}]}
     """
     result: Dict[str, Any] = {
         "education": [],
@@ -57,16 +99,18 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
             highlights = edu.get("highlights", edu.get("education_highlight", []))
             if highlights and isinstance(highlights[0], dict):
                 highlights = [h.get("highlight", h.get("bullet", str(h))) for h in highlights]
-            result["education"].append({
-                "school": edu.get("school", ""),
-                "location": edu.get("location"),
-                "start_date": edu.get("start_date"),
-                "end_date": edu.get("end_date"),
-                "degree": edu.get("degree"),
-                "major": edu.get("major"),
-                "gpa": edu.get("gpa"),
-                "highlights": highlights if isinstance(highlights, list) else [],
-            })
+            result["education"].append(
+                {
+                    "school": edu.get("school", ""),
+                    "location": edu.get("location"),
+                    "start_date": edu.get("start_date"),
+                    "end_date": edu.get("end_date"),
+                    "degree": edu.get("degree"),
+                    "major": edu.get("major"),
+                    "gpa": edu.get("gpa"),
+                    "highlights": highlights if isinstance(highlights, list) else [],
+                }
+            )
 
     for exp in output.get("experience", []):
         if isinstance(exp, dict):
@@ -77,15 +121,17 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
                     bullets.append({"bullet": b.get("bullet", b.get("highlight", str(b)))})
                 else:
                     bullets.append({"bullet": str(b)})
-            result["experience"].append({
-                "company": exp.get("company", ""),
-                "location": exp.get("location"),
-                "start_date": exp.get("start_date"),
-                "end_date": exp.get("end_date"),
-                "role": exp.get("role", ""),
-                "is_current": exp.get("is_current", False),
-                "bullets": bullets,
-            })
+            result["experience"].append(
+                {
+                    "company": exp.get("company", ""),
+                    "location": exp.get("location"),
+                    "start_date": exp.get("start_date"),
+                    "end_date": exp.get("end_date"),
+                    "role": exp.get("role", ""),
+                    "is_current": exp.get("is_current", False),
+                    "bullets": bullets,
+                }
+            )
 
     if include_projects:
         for proj in output.get("projects", []):
@@ -98,15 +144,19 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
                     else:
                         bullets.append({"bullet": str(b)})
                 tech_raw = proj.get("technologies", proj.get("project_tech", []))
-                technologies = [t.get("tech", str(t)) if isinstance(t, dict) else str(t) for t in tech_raw]
-                result["projects"].append({
-                    "name": proj.get("name", ""),
-                    "start_date": proj.get("start_date"),
-                    "end_date": proj.get("end_date"),
-                    "role": proj.get("role"),
-                    "bullets": bullets,
-                    "technologies": technologies,
-                })
+                technologies = [
+                    t.get("tech", str(t)) if isinstance(t, dict) else str(t) for t in tech_raw
+                ]
+                result["projects"].append(
+                    {
+                        "name": proj.get("name", ""),
+                        "start_date": proj.get("start_date"),
+                        "end_date": proj.get("end_date"),
+                        "role": proj.get("role"),
+                        "bullets": bullets,
+                        "technologies": technologies,
+                    }
+                )
 
     if include_skills:
         skills_raw = output.get("skills", [])
@@ -115,85 +165,58 @@ def _ensure_output_schema(output: Dict, include_projects: bool, include_skills: 
         for cat in skills_raw:
             if isinstance(cat, dict):
                 items_raw = cat.get("items", cat.get("skill_item", []))
-                items = [i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items_raw]
-                result["skills"]["categories"].append({
-                    "name": cat.get("name", ""),
-                    "items": items,
-                })
+                items = [
+                    i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items_raw
+                ]
+                result["skills"]["categories"].append(
+                    {
+                        "name": cat.get("name", ""),
+                        "items": items,
+                    }
+                )
 
     return result
 
 
-STEP1_SYSTEM = """You are a resume content selector. Your job is to select the most relevant content from a candidate's profile for a specific job description.
-
-RULES:
-- ONLY use content from the provided profile. DO NOT invent companies, dates, degrees, or accomplishments.
-- Select education, experience, projects, and skills most relevant to the job description.
-- Preserve the exact structure: education_highlight -> highlights, experience_bullet -> bullets, project_bullet -> bullets, project_tech -> technologies, skill_item -> items.
-- Return valid JSON with keys: education, experience, projects, skills.
-- Each education needs: school, location, start_date, end_date, degree, major, gpa, highlights (array of strings).
-- Each experience needs: company, location, start_date, end_date, role, is_current, bullets (array of objects with "bullet" key).
-- Each project needs: name, start_date, end_date, role, bullets (array of {bullet}), technologies (array of strings).
-- Skills: {categories: [{name, items: [strings]}]}."""
-
-STEP1_USER = """Job Description:
+def _build_step1_message(
+    job_description: str,
+    profile_json: str,
+    prompt_text: str,
+    include_projects: str,
+    include_skills: str,
+) -> str:
+    """Build the first OpenAI message: JOB DESCRIPTION / PROFILE / PROMPT."""
+    prompt_filled = prompt_text.replace("{include_projects}", include_projects).replace(
+        "{include_skills}", include_skills
+    )
+    return f"""JOB DESCRIPTION:
 {job_description}
 
-Profile Data (use ONLY this content):
+PROFILE:
 {profile_json}
 
-Include projects: {include_projects}
-Include skills: {include_skills}
+PROMPT:
+{prompt_filled}"""
 
-Select the most relevant content. Return JSON only."""
 
-STEP2_SYSTEM = """You are a resume optimizer. Refine the selected content for the job description.
+def _build_step2_message(
+    template_snippet: str,
+    bullets_json: str,
+    profile_json: str,
+    prompt_text: str,
+) -> str:
+    """Build the second OpenAI message: TEMPLATE / BULLETS / PROFILE / PROMPT."""
+    return f"""TEMPLATE:
+{template_snippet}
 
-RULES:
-- Use strong action verbs (Led, Developed, Implemented, etc.).
-- Quantify impact where possible (percentages, numbers, scale).
-- Align keywords from the job description naturally.
-- Keep the exact JSON structure. Return valid JSON with keys: education, experience, projects, skills."""
+BULLETS:
+{bullets_json}
 
-STEP2_USER = """Job Description:
-{job_description}
+PROFILE:
+{profile_json}
 
-Current resume content:
-{content_json}
-
-Refine and optimize. Return JSON only."""
-
-STEP3_SYSTEM = """You are an ATS (Applicant Tracking System) compliance expert. Ensure resume content is ATS-friendly.
-
-RULES:
-- No tables, images, or complex formatting - use simple bullet structure.
-- Standard section headers: Education, Experience, Projects, Technical Skills.
-- Keyword-rich content aligned with job description.
-- Simple bullet structure - one idea per bullet.
-- Return the same JSON structure. Return valid JSON only."""
-
-STEP3_USER = """Job Description:
-{job_description}
-
-Resume content to make ATS-compliant:
-{content_json}
-
-Fix any ATS issues. Return JSON only."""
-
-STEP4_SYSTEM = """You are a resume editor. Trim content to fit exactly within page limits.
-
-RULES:
-- Max {max_bullets_per_experience} bullets per experience.
-- Max {max_projects} projects.
-- Max {max_educations} education entries.
-- Condense without losing impact. Merge related bullets if needed.
-- Return valid JSON with keys: education, experience, projects, skills.
-- Preserve the exact structure."""
-
-STEP4_USER = """Trim this resume content to fit one page:
-{content_json}
-
-Apply the limits strictly. Return JSON only."""
+PROMPT:
+{prompt_text}"""
 
 
 def run_pipeline(
@@ -202,14 +225,16 @@ def run_pipeline(
     page_count: int,
     include_projects: bool,
     include_skills: bool,
+    update_step: Optional[Callable[[str], None]] = None,
 ) -> Dict:
     """
-    Run the 4-step LangChain pipeline: select, refine, ATS check, one-page trim.
+    Run the 2-step pipeline: (1) generate ATS bullets, (2) finalize resume.
+    Applies page limits in code after step 1.
     """
-    limits = PAGE_COUNT_LIMITS.get(page_count, PAGE_COUNT_LIMITS[3])
-    max_bullets = limits.get("max_bullets_per_experience", 3)
-    max_projects = limits.get("max_projects", 2)
-    max_educations = limits.get("max_educations") or 1
+
+    def _step(s: str) -> None:
+        if update_step:
+            update_step(s)
 
     llm = _get_llm()
     parser = JsonOutputParser()
@@ -217,53 +242,37 @@ def run_pipeline(
     profile_flat = _transform_profile_to_flat(profile_snapshot)
     profile_json = json.dumps(profile_flat, indent=2)
 
-    # Step 1: Content Selection
-    prompt1 = ChatPromptTemplate.from_messages([
-        ("system", STEP1_SYSTEM),
-        ("human", STEP1_USER),
-    ])
-    chain1 = prompt1 | llm | parser
-    step1_output = chain1.invoke({
-        "job_description": job_description,
-        "profile_json": profile_json,
-        "include_projects": str(include_projects),
-        "include_skills": str(include_skills),
-    })
+    # Step 1: Generate ATS-optimized bullets
+    _step("GENERATING_BULLETS")
+    prompt1_text = load_prompt("resume_generation")
+    step1_message = _build_step1_message(
+        job_description=job_description,
+        profile_json=profile_json,
+        prompt_text=prompt1_text,
+        include_projects=str(include_projects),
+        include_skills=str(include_skills),
+    )
+    chain1 = llm | parser
+    step1_output = chain1.invoke(step1_message)
 
-    # Step 2: Refinement
-    prompt2 = ChatPromptTemplate.from_messages([
-        ("system", STEP2_SYSTEM),
-        ("human", STEP2_USER),
-    ])
-    chain2 = prompt2 | llm | parser
-    step2_output = chain2.invoke({
-        "job_description": job_description,
-        "content_json": json.dumps(step1_output, indent=2),
-    })
+    # Apply page limits in code
+    step1_trimmed = _apply_page_limits(
+        step1_output,
+        page_count=page_count,
+        include_projects=include_projects,
+        include_skills=include_skills,
+    )
 
-    # Step 3: ATS Check
-    prompt3 = ChatPromptTemplate.from_messages([
-        ("system", STEP3_SYSTEM),
-        ("human", STEP3_USER),
-    ])
-    chain3 = prompt3 | llm | parser
-    step3_output = chain3.invoke({
-        "job_description": job_description,
-        "content_json": json.dumps(step2_output, indent=2),
-    })
+    # Step 2: Finalize resume (template + bullets + profile)
+    _step("FINALIZING_RESUME")
+    prompt2_text = load_prompt("resume_finalize")
+    step2_message = _build_step2_message(
+        template_snippet=TEMPLATE_SNIPPET,
+        bullets_json=json.dumps(step1_trimmed, indent=2),
+        profile_json=profile_json,
+        prompt_text=prompt2_text,
+    )
+    chain2 = llm | parser
+    step2_output = chain2.invoke(step2_message)
 
-    # Step 4: One-Page Trim (when page_count=1, apply strict limits)
-    prompt4 = ChatPromptTemplate.from_messages([
-        ("system", STEP4_SYSTEM),
-        ("human", STEP4_USER),
-    ])
-    chain4 = prompt4 | llm | parser
-    step4_output = chain4.invoke({
-        "content_json": json.dumps(step3_output, indent=2),
-        "max_bullets_per_experience": max_bullets,
-        "max_projects": max_projects,
-        "max_educations": max_educations,
-    })
-
-    # Ensure output matches template schema
-    return _ensure_output_schema(step4_output, include_projects, include_skills)
+    return _ensure_output_schema(step2_output, include_projects, include_skills)

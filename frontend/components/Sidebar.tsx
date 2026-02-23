@@ -6,16 +6,21 @@ import {
   LayoutDashboard,
   User,
   Briefcase,
+  GraduationCap,
   FileText,
+  FileStack,
   LogOut,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { useDisplayUser } from '@/lib/use-display-user'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Experience', href: '/experience', icon: Briefcase },
+  { name: 'Education', href: '/education', icon: GraduationCap },
+  { name: 'Resumes', href: '/resumes', icon: FileStack },
   { name: 'Generate Resume', href: '/generate', icon: FileText },
 ]
 
@@ -26,16 +31,8 @@ type SidebarProps = {
 
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
-
-  const initial = user?.nickname?.charAt(0).toUpperCase() ||
-    user?.firstName?.charAt(0).toUpperCase() ||
-    user?.email?.charAt(0).toUpperCase() ||
-    'U'
-
-  const displayName = user?.nickname ||
-    (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name) ||
-    'User'
+  const { logout } = useAuth()
+  const { displayName, initial } = useDisplayUser()
 
   const navContent = (
     <>

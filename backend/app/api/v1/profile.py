@@ -4,18 +4,18 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-from app.auth.dependencies import get_current_user
-from app.core.db import get_supabase_client
-from app.services.profile import ProfileService
 from shared.app.schemas.profile import (
     ProfileCompletenessResponse,
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
 )
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+from app.auth.dependencies import get_current_user
+from app.core.db import get_supabase_client
+from app.services.profile import ProfileService
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -59,9 +59,7 @@ async def get_profile(
     service = ProfileService(supabase, current_user["user_id"])
     profile = await service.get_profile(profile_id)
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return profile
 
 
@@ -90,9 +88,7 @@ async def update_profile(
     service = ProfileService(supabase, current_user["user_id"])
     profile = await service.update_profile(profile_id, profile_data)
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return profile
 
 
@@ -108,7 +104,4 @@ async def delete_profile(
     service = ProfileService(supabase, current_user["user_id"])
     success = await service.delete_profile(profile_id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
-        )
-
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")

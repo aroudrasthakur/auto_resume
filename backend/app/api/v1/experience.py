@@ -75,12 +75,14 @@ async def add_experience_bullets(
     rows = []
     for i, bullet_text in enumerate(bullets):
         if bullet_text and str(bullet_text).strip():
-            rows.append({
-                "experience_id": str(experience_id),
-                "user_id": current_user["user_id"],
-                "bullet": str(bullet_text).strip(),
-                "sort_order": i,
-            })
+            rows.append(
+                {
+                    "experience_id": str(experience_id),
+                    "user_id": current_user["user_id"],
+                    "bullet": str(bullet_text).strip(),
+                    "sort_order": i,
+                }
+            )
 
     if not rows:
         return {"added": 0}
@@ -150,4 +152,3 @@ async def delete_experience(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Experience not found")
-

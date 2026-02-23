@@ -3,8 +3,6 @@
 from typing import List, Optional
 from uuid import UUID
 
-from supabase import Client
-
 from shared.app.schemas.profile import (
     ContactCreate,
     ContactResponse,
@@ -14,6 +12,7 @@ from shared.app.schemas.profile import (
     ProfileUpdate,
 )
 from shared.app.utils.encryption import decrypt_contact, encrypt_contact
+from supabase import Client
 
 
 class ProfileService:
@@ -102,9 +101,7 @@ class ProfileService:
                 ciphertext = bytes.fromhex(contact_data["ciphertext"])
                 nonce = bytes.fromhex(contact_data["nonce"])
                 auth_tag = bytes.fromhex(contact_data["auth_tag"])
-                value = decrypt_contact(
-                    ciphertext, nonce, auth_tag, contact_data["key_version"]
-                )
+                value = decrypt_contact(ciphertext, nonce, auth_tag, contact_data["key_version"])
                 contacts.append(
                     ContactResponse(
                         id=contact_data["id"],
@@ -131,12 +128,7 @@ class ProfileService:
 
     async def list_profiles(self) -> List[ProfileResponse]:
         """List all profiles for the user."""
-        result = (
-            self.supabase.table("profile")
-            .select("*")
-            .eq("user_id", self.user_id)
-            .execute()
-        )
+        result = self.supabase.table("profile").select("*").eq("user_id", self.user_id).execute()
 
         profiles = []
         for profile_data in result.data:
@@ -161,22 +153,20 @@ class ProfileService:
             update_data["location"] = data.location
 
         if update_data:
-            self.supabase.table("profile").update(update_data).eq(
-                "id", str(profile_id)
-            ).eq("user_id", self.user_id).execute()
+            self.supabase.table("profile").update(update_data).eq("id", str(profile_id)).eq(
+                "user_id", self.user_id
+            ).execute()
 
         # Update contacts if provided
         if data.contacts is not None:
             # Delete existing contacts
-            self.supabase.table("profile_contact").delete().eq(
-                "profile_id", str(profile_id)
-            ).eq("user_id", self.user_id).execute()
+            self.supabase.table("profile_contact").delete().eq("profile_id", str(profile_id)).eq(
+                "user_id", self.user_id
+            ).execute()
 
             # Insert new contacts
             for contact in data.contacts:
-                ciphertext, nonce, auth_tag, key_version = encrypt_contact(
-                    contact.value
-                )
+                ciphertext, nonce, auth_tag, key_version = encrypt_contact(contact.value)
                 self.supabase.table("profile_contact").insert(
                     {
                         "profile_id": str(profile_id),
@@ -203,9 +193,7 @@ class ProfileService:
         )
         return len(result.data) > 0
 
-    def check_completeness(
-        self, profile_id: Optional[UUID] = None
-    ) -> ProfileCompletenessResponse:
+    def check_completeness(self, profile_id: Optional[UUID] = None) -> ProfileCompletenessResponse:
         """
         Check if a profile is complete for resume generation.
 
@@ -303,4 +291,3 @@ class ProfileService:
             missing_sections=missing,
             profile_id=profile_id_str,
         )
-

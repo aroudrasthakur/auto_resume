@@ -50,6 +50,10 @@ async def get_current_user(
                 detail="Token missing 'sub' claim",
             )
 
+        # When DEV_AUTH_BYPASS returns fake "dev-user-123", map to valid UUID for DB queries
+        if settings.DEV_AUTH_BYPASS and user_id == "dev-user-123":
+            user_id = DEV_USER_ID
+
         return {
             "user_id": user_id,
             "email": decoded.get("email"),
@@ -61,4 +65,3 @@ async def get_current_user(
             detail=f"Invalid token: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-

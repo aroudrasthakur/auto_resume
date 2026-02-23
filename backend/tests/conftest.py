@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.db import get_supabase_client
 from app.main import create_app
 
 
@@ -35,6 +36,7 @@ def client(mock_supabase):
     # Set dev auth bypass for testing
     os.environ["DEV_AUTH_BYPASS"] = "true"
     app = create_app()
+    app.dependency_overrides[get_supabase_client] = lambda: mock_supabase
     return TestClient(app)
 
 
@@ -42,4 +44,3 @@ def client(mock_supabase):
 def auth_headers():
     """Authorization headers."""
     return {"Authorization": "Bearer test-token"}
-

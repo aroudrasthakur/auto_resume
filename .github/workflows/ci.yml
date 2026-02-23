@@ -25,8 +25,8 @@ jobs:
           poetry install
       - name: Run tests
         env:
-          DEV_AUTH_BYPASS: "true"
-          DATABASE_URL: "postgresql://test:test@localhost/test"
+          DEV_AUTH_BYPASS: 'true'
+          DATABASE_URL: 'postgresql://test:test@localhost/test'
         run: |
           cd backend
           poetry run pytest --cov=app --cov-report=xml --cov-report=html
@@ -49,12 +49,12 @@ jobs:
       - name: Install dependencies
         run: |
           cd worker
-          poetry install
+          poetry install --no-root
           cd ../shared
           poetry install
       - name: Run tests
         env:
-          AI_PROVIDER: "mock"
+          AI_PROVIDER: 'mock'
         run: |
           cd worker
           poetry run pytest --cov=app --cov-report=xml --cov-report=html
@@ -111,13 +111,12 @@ jobs:
       - name: Lint backend
         run: |
           cd backend
-          poetry install
+          poetry install --no-root
           poetry run black --check .
           poetry run isort --check .
       - name: Lint worker
         run: |
           cd worker
-          poetry install
+          poetry install --no-root
           poetry run black --check .
           poetry run isort --check .
-

@@ -36,14 +36,58 @@ async def list_education(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """List all education entries."""
+    """List all education entries with highlights."""
     result = (
         supabase.table("education")
-        .select("*")
+        .select("*, education_highlight(*)")
         .eq("user_id", current_user["user_id"])
+        .order("start_date", desc=True)
         .execute()
     )
     return result.data or []
+
+
+@router.post("/{education_id}/highlights", status_code=status.HTTP_201_CREATED)
+@limiter.limit("100/minute")
+async def add_education_highlights(
+    request: Request,
+    education_id: UUID,
+    highlights_data: dict,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Add highlights to an education entry."""
+    edu_result = (
+        supabase.table("education")
+        .select("id")
+        .eq("id", str(education_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    if not edu_result.data:
+        raise HTTPException(status_code=404, detail="Education not found")
+
+    highlights = highlights_data.get("highlights", [])
+    if not highlights:
+        return {"added": 0}
+
+    rows = []
+    for i, text in enumerate(highlights):
+        if text and str(text).strip():
+            rows.append(
+                {
+                    "education_id": str(education_id),
+                    "user_id": current_user["user_id"],
+                    "highlight": str(text).strip(),
+                    "sort_order": i,
+                }
+            )
+
+    if not rows:
+        return {"added": 0}
+
+    result = supabase.table("education_highlight").insert(rows).execute()
+    return {"added": len(result.data or [])}
 
 
 @router.get("/{education_id}")
@@ -107,4 +151,3 @@ async def delete_education(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Education not found")
-
