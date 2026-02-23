@@ -35,7 +35,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         onMobileClose={() => setMobileMenuOpen(false)}
       />
 
-      <div className="flex flex-1 flex-col md:ml-16">
+      <div className="flex flex-1 flex-col md:ml-[200px]">
         <TopBar
           onMenuClick={() => setMobileMenuOpen(true)}
           showPanelToggle={isDashboardPage}

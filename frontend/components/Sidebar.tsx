@@ -46,7 +46,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         >
           R
         </div>
-        <span className="whitespace-nowrap font-body text-base font-semibold text-[var(--text)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="whitespace-nowrap font-body text-base font-semibold text-[var(--text)] max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-hover/sb:max-w-[120px] group-hover/sb:opacity-100">
           ResumeAI
         </span>
       </div>
@@ -83,7 +83,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     aria-hidden
                   />
                   <span
-                    className={isActive ? 'text-[var(--gold)]' : ''}
+                    className={`max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-hover/sb:max-w-[140px] group-hover/sb:opacity-100 ${isActive ? 'text-[var(--gold)]' : ''}`}
                     style={isActive ? { color: 'var(--gold)' } : undefined}
                   >
                     {item.name}
@@ -106,7 +106,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             >
               {initial}
             </div>
-            <span className="truncate font-body text-sm font-medium text-[var(--text)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <span className="truncate font-body text-sm font-medium text-[var(--text)] max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-hover/sb:max-w-[120px] group-hover/sb:opacity-100">
               {displayName}
             </span>
           </Link>
@@ -125,14 +125,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop: fixed collapsible sidebar */}
+      {/* Desktop: fixed collapsible sidebar — z-50 so it stays above main content */}
       <aside
-        className="group fixed inset-y-0 left-0 z-40 hidden w-16 flex-col overflow-hidden border-r border-b1 bg-s1 md:flex md:hover:w-[200px]"
-        style={{
-          transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
+        className="group/sb fixed inset-y-0 left-0 z-50 hidden flex-col overflow-hidden border-r border-b1 bg-s1 transition-[width] duration-200 ease-out md:flex md:w-16 md:hover:w-[200px]"
+        style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
-        <div className="flex h-full w-[200px] flex-col px-3 py-4">
+        <div className="flex h-full w-[200px] min-w-[200px] flex-col px-3 py-4">
           {navContent}
         </div>
       </aside>

@@ -71,14 +71,14 @@ export default function ProgressRing({ completion, steps }: ProgressRingProps) {
 
       <div className="min-w-0 flex-1">
         <h2
-          className="font-heading text-xl text-text"
-          style={{ fontFamily: 'var(--font-heading)', fontSize: '20px' }}
+          className="font-heading text-2xl text-text md:text-[1.75rem]"
+          style={{ fontFamily: 'var(--font-heading)' }}
         >
           Profile is <em className="italic text-gold">empty.</em>
         </h2>
         <p
-          className="mt-2 font-body text-muted leading-relaxed"
-          style={{ fontSize: '12.5px', lineHeight: 1.6 }}
+          className="mt-3 font-body text-muted leading-relaxed"
+          style={{ fontSize: '13px', lineHeight: 1.6 }}
         >
           Complete the steps below so we can generate stronger, tailored resumes for you.
         </p>
