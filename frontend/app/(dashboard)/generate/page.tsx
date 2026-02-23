@@ -1,271 +1,172 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
 
 interface Profile {
   id: string
-  name: string
+  name?: string
   headline?: string
-}
-
-interface CompletenessCheck {
-  is_complete: boolean
-  missing_sections: string[]
-  profile_id: string | null
 }
 
 export default function GeneratePage() {
   const router = useRouter()
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [completeness, setCompleteness] = useState<CompletenessCheck | null>(null)
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [selectedProfileId, setSelectedProfileId] = useState<string>('')
   const [jobDescription, setJobDescription] = useState('')
   const [pageCount, setPageCount] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [loadingProfiles, setLoadingProfiles] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  })
-
   useEffect(() => {
-    const fetchProfilesAndCheck = async () => {
-      setProfileLoading(true)
-      setError(null)
-      try {
-        const [profilesRes, checkRes] = await Promise.all([
-          fetch(`${apiUrl}/api/v1/profiles`, { headers: getAuthHeaders() }),
-          fetch(`${apiUrl}/api/v1/profiles/check`, { headers: getAuthHeaders() }),
-        ])
-
-        let profilesData: Profile[] = []
-        if (profilesRes.ok) {
-          profilesData = await profilesRes.json()
-          setProfiles(profilesData)
-        }
-
-        if (checkRes.ok) {
-          const checkData = await checkRes.json()
-          setCompleteness(checkData)
-          if (checkData.profile_id) {
-            setSelectedProfileId(checkData.profile_id)
-          } else if (profilesData.length > 0) {
-            setSelectedProfileId(profilesData[0].id)
-          }
-        } else if (profilesData.length > 0) {
-          setSelectedProfileId(profilesData[0].id)
-        }
-      } catch (err) {
-        console.error('Error fetching profiles:', err)
-        setError('Failed to load profile data')
-      } finally {
-        setProfileLoading(false)
-      }
-    }
-
-    fetchProfilesAndCheck()
+    apiFetch<Profile[]>('/profiles').then((res) => {
+      if (res.ok && res.data && Array.isArray(res.data)) setProfiles(res.data)
+      setLoadingProfiles(false)
+    })
   }, [])
 
-  useEffect(() => {
-    if (profiles.length > 0 && !selectedProfileId) {
-      setSelectedProfileId(profiles[0].id)
-    }
-  }, [profiles, selectedProfileId])
+  const profileId = profiles[0]?.id ?? null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profileId) {
+      setError('Create a profile first. Go to Dashboard and complete your profile, or add an experience to auto-create one.')
+      return
+    }
     setLoading(true)
     setError(null)
-
-    try {
-      const response = await fetch(`${apiUrl}/api/v1/resumes/generate`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          profile_id: selectedProfileId,
-          job_description_text: jobDescription,
-          template_id: 'JakesResumeATS',
-          page_count: pageCount,
-          include_projects: true,
-          include_skills: true,
-          outputs: ['PDF'],
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        router.push(`/resumes/${data.generated_resume_id}`)
-      } else {
-        if (data.code === 'PROFILE_INCOMPLETE' || response.status === 400) {
-          setError(
-            data.detail ||
-              'Profile not set up. Please add your information, experience, and education before generating a resume.'
-          )
-          setCompleteness({
-            is_complete: false,
-            missing_sections: data.missing_sections || ['profile', 'experience', 'education', 'contacts'],
-            profile_id: selectedProfileId,
-          })
-        } else {
-          setError(data.detail || 'Failed to generate resume')
-        }
-      }
-    } catch (err) {
-      console.error('Error:', err)
-      setError('Error generating resume')
-    } finally {
-      setLoading(false)
+    const res = await apiFetch<{ generated_resume_id: string }>('/resumes/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        profile_id: profileId,
+        job_description_text: jobDescription.trim(),
+        template_id: 'JakesResumeATS',
+        page_count: pageCount,
+        include_projects: true,
+        include_skills: true,
+        outputs: ['PDF'],
+      }),
+    })
+    if (res.ok && res.data?.generated_resume_id) {
+      router.push(`/resumes/${res.data.generated_resume_id}`)
+      return
     }
-  }
-
-  if (profileLoading) {
-    return (
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Generate Resume</h1>
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    )
-  }
-
-  const isComplete = completeness?.is_complete ?? false
-  const hasProfile = profiles.length > 0 && completeness?.profile_id
-  const missingSections = completeness?.missing_sections ?? []
-
-  if (!hasProfile || !isComplete) {
-    return (
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Generate Resume</h1>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-amber-800 mb-2">
-            Set up your profile first
-          </h2>
-          <p className="text-amber-700 mb-4">
-            {!hasProfile
-              ? 'Create a profile and add your experience and education before generating a resume.'
-              : 'Complete the following sections before generating a resume:'}
-          </p>
-          {missingSections.length > 0 && (
-            <ul className="list-disc list-inside text-amber-700 mb-4 space-y-1">
-              {missingSections.map((section) => (
-                <li key={section} className="capitalize">
-                  {section === 'profile' && 'Create a profile with your name'}
-                  {section === 'contacts' && 'Add at least one contact (email, phone)'}
-                  {section === 'experience' && 'Add at least one work experience with bullets'}
-                  {section === 'education' && 'Add at least one education entry'}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex gap-3">
-            <Link
-              href="/profile"
-              className="inline-flex items-center px-4 py-2 rounded-md bg-amber-600 text-white hover:bg-amber-700"
-            >
-              Set up profile
-            </Link>
-            <Link
-              href="/experience"
-              className="inline-flex items-center px-4 py-2 rounded-md border border-amber-600 text-amber-700 hover:bg-amber-50"
-            >
-              Add experience
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
+    setError(res.error ?? 'Failed to generate resume')
+    setLoading(false)
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Generate Resume</h1>
+    <div className="flex flex-col gap-7 px-5 py-8 md:gap-10 md:px-10 md:py-10">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold transition-colors"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Dashboard
+        </Link>
+      </div>
+
+      <h1
+        className="font-heading text-2xl text-text"
+        style={{ fontFamily: 'var(--font-heading)' }}
+      >
+        Generate resume
+      </h1>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="rounded border border-red-500/50 bg-red-500/10 px-4 py-3 font-body text-sm text-red-400">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {profiles.length > 1 && (
+      {loadingProfiles ? (
+        <p className="font-body text-muted">Loading profiles…</p>
+      ) : !profileId ? (
+        <div className="rounded border border-b1 bg-s1 p-6">
+          <p className="font-body text-muted mb-2">
+            You need a resume profile before generating. Add at least one experience from the Experience page to create a profile, or complete your profile from the Dashboard.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <Link
+              href="/experience"
+              className="inline-flex items-center gap-2 rounded px-3 py-2 font-body text-sm font-semibold text-[var(--bg)]"
+              style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
+            >
+              Add experience
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 font-body text-sm font-medium text-gold hover:underline"
+            >
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
-              htmlFor="profile"
-              className="block text-sm font-medium text-gray-700"
+              htmlFor="job-description"
+              className="mb-2 block font-mono text-xs uppercase text-muted"
+              style={{ fontFamily: 'var(--font-mono)' }}
             >
-              Profile
+              Job description
             </label>
-            <select
-              id="profile"
-              value={selectedProfileId}
-              onChange={(e) => setSelectedProfileId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            >
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
+            <textarea
+              id="job-description"
+              rows={10}
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              className="w-full rounded border border-b1 bg-s1 px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none"
+              placeholder="Paste the job posting or description here so we can tailor your resume."
+              required
+            />
+          </div>
+          <div>
+            <span className="mb-2 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
+              Page count
+            </span>
+            <div className="flex gap-4">
+              {[1, 2, 3].map((count) => (
+                <label key={count} className="flex cursor-pointer items-center gap-2 font-body text-text">
+                  <input
+                    type="radio"
+                    name="page-count"
+                    value={count}
+                    checked={pageCount === count}
+                    onChange={() => setPageCount(count)}
+                    className="border-b2 text-gold focus:ring-gold"
+                  />
+                  {count} page{count > 1 ? 's' : ''}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-        )}
-
-        <div>
-          <label
-            htmlFor="job-description"
-            className="block text-sm font-medium text-gray-700"
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded px-4 py-3 font-body text-sm font-semibold text-[var(--bg)] disabled:opacity-50 transition-transform hover:scale-[1.02]"
+            style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
           >
-            Job Description
-          </label>
-          <textarea
-            id="job-description"
-            rows={10}
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            required
-            placeholder="Paste the job description from the company you're applying to..."
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Page Count
-          </label>
-          <div className="mt-2 space-x-4">
-            {[1, 2, 3].map((count) => (
-              <label key={count} className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="page-count"
-                  value={count}
-                  checked={pageCount === count}
-                  onChange={() => setPageCount(count)}
-                  className="form-radio"
-                />
-                <span className="ml-2">
-                  {count} Page{count > 1 ? 's' : ''}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-        >
-          {loading ? 'Generating...' : 'Generate Resume'}
-        </button>
-      </form>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Generate resume
+              </>
+            )}
+          </button>
+        </form>
+      )}
     </div>
   )
 }
