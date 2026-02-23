@@ -25,13 +25,20 @@ export default function AuthTopBar({
           {backLabel}
         </button>
       ) : (
-        <Link href={backHref} className="auth-topbar-back">
+        <Link
+          href={backHref}
+          className="auth-topbar-back"
+          style={{ fontFamily: "'DM Mono', monospace", fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#4a4a4a' }}
+        >
           {backLabel}
         </Link>
       )}
-      <Link href="/" className="auth-topbar-logo">
-        <span className="text-[var(--text)]">Resume</span>
-        <span className="italic text-gold">AI</span>
+      <Link
+        href="/"
+        className="auth-topbar-logo"
+        style={{ fontFamily: "'DM Serif Display', serif", fontSize: '17px', letterSpacing: '-0.3px', color: '#f0ede8', textDecoration: 'none' }}
+      >
+        Resume<em style={{ color: '#c9a96e', fontStyle: 'italic' }}>AI</em>
       </Link>
     </div>
   )

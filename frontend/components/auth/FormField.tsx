@@ -37,6 +37,11 @@ export default function FormField({
           id={id}
           type={type}
           className={`field-input ${isPassword ? 'pr-[44px]' : ''} ${className}`}
+          style={{
+            backgroundColor: '#0d0d0d',
+            color: '#f0ede8',
+            border: '1px solid #252525',
+          }}
           {...inputProps}
         />
         <span className="focus-line" aria-hidden />

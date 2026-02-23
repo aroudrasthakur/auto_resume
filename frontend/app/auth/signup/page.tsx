@@ -46,24 +46,11 @@ export default function SignUpPage() {
   }
 
   useEffect(() => {
-    if (!leftRef.current || !formRef.current) return
-    gsap.fromTo(leftRef.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
-    gsap.fromTo(formRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
-    if (titleRef.current) {
-      gsap.fromTo(
-        titleRef.current,
-        { opacity: 0, y: 20, skewY: 2 },
-        { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' }
-      )
-    }
-    if (fieldsRef.current) {
-      const targets = fieldsRef.current.querySelectorAll('.field, .field-row')
-      gsap.fromTo(
-        targets,
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, delay: 0.25, ease: 'power3.out' }
-      )
-    }
+    gsap.fromTo('.signup-left', { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
+    gsap.fromTo('.step-row-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.6, stagger: 0.1, delay: 0.35, ease: 'power3.out' })
+    gsap.fromTo('.signup-form', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
+    gsap.fromTo('.signup-form .form-title', { opacity: 0, y: 20, skewY: 2 }, { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' })
+    gsap.fromTo('.signup-form .field, .signup-form .field-row', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, delay: 0.25, ease: 'power3.out' })
   }, [isLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,20 +101,35 @@ export default function SignUpPage() {
         </AuthLeftPanel>
         <div className="auth-right auth-right-signup">
           <div ref={formRef} className="auth-form-wrap auth-form-wrap-signup signup-form">
-            <p
-              className="mb-0"
+            <div
               style={{
-                fontFamily: 'var(--font-mono), monospace',
+                fontFamily: "'DM Mono', monospace",
                 fontSize: '9px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
-                color: 'var(--muted)',
+                color: '#c9a96e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '16px',
               }}
             >
+              <span style={{ width: '20px', height: '1px', background: '#c9a96e', display: 'block' }} />
               New account
-            </p>
-            <h1 ref={titleRef} className="form-title font-heading text-text mt-0.5">
-              Let&apos;s get you <em className="text-gold not-italic">set up.</em>
+            </div>
+            <h1
+              ref={titleRef}
+              className="form-title"
+              style={{
+                fontFamily: "'DM Serif Display', serif",
+                fontSize: '32px',
+                letterSpacing: '-0.02em',
+                lineHeight: '1.15',
+                color: '#f0ede8',
+                marginBottom: '4px',
+              }}
+            >
+              Let&apos;s get you <em style={{ color: '#c9a96e', fontStyle: 'italic' }}>set up.</em>
             </h1>
             <p className="text-muted mb-2 mt-0" style={{ fontSize: '12px' }}>
               Takes under 2 minutes.

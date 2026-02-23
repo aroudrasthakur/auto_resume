@@ -1,34 +1,51 @@
 'use client'
 
-const items = [
-  'Username or email',
-  'MFA supported',
-  'AWS Cognito',
-  'Encrypted',
-]
+const ITEMS = ['Username or email', 'MFA supported', 'AWS Cognito', 'Encrypted']
 
 export default function AuthFeatures() {
   return (
     <div
-      className="grid grid-cols-2 gap-4 auth-features-grid"
       style={{
-        borderTop: '1px solid var(--b1)',
-        paddingTop: '24px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '1px',
+        background: '#1a1a1a',
+        border: '1px solid #1a1a1a',
+        borderRadius: '3px',
+        overflow: 'hidden',
         marginTop: '24px',
       }}
     >
-      {items.map((text) => (
-        <div key={text} className="flex items-center gap-2">
+      {ITEMS.map((label) => (
+        <div
+          key={label}
+          style={{
+            background: '#0d0d0d',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12px',
+            color: '#4a4a4a',
+          }}
+        >
           <span
-            className="shrink-0 rounded-full border border-green flex items-center justify-center text-green"
-            style={{ width: 14, height: 14, fontSize: '7px', lineHeight: 1 }}
-            aria-hidden
+            style={{
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              border: '1px solid #4ade80',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: '7px',
+              color: '#4ade80',
+            }}
           >
             ✓
           </span>
-          <span className="text-muted" style={{ fontSize: '12px' }}>
-            {text}
-          </span>
+          {label}
         </div>
       ))}
     </div>

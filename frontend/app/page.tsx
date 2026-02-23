@@ -18,7 +18,7 @@ export default function LandingPage() {
       <WaveCanvas />
       <Cursor />
       <LandingNav />
-      <main className="min-w-0 overflow-x-hidden">
+      <main id="main-content" className="min-w-0 overflow-x-hidden">
         <Hero />
         <LandingWaveDivider />
         <TickerStrip />

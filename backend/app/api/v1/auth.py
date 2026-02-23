@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -240,13 +240,17 @@ def signup(request: SignupRequest):
         cognito_msg = exc.response["Error"].get("Message", "")
         logger.warning("Cognito signup error: %s - %s", code, cognito_msg)
         message_map = {
-            "UsernameExistsException": "Username already exists.",
-            "InvalidPasswordException": "Password not strong enough.",
+            "UsernameExistsException": "Username already exists. Try signing in or use a different username.",
+            "InvalidPasswordException": "Password does not meet requirements. Use at least 8 characters with uppercase, lowercase, numbers and special characters.",
             "InvalidParameterException": cognito_msg or "Invalid input provided.",
+            "CodeMismatchException": cognito_msg or "Invalid code.",
         }
         detail = message_map.get(code, cognito_msg or str(exc))
         status = 400 if code in message_map else 500
         raise HTTPException(status_code=status, detail=detail) from exc
+    except ParamValidationError as exc:  # pragma: no cover
+        logger.warning("Cognito signup param validation: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid signup data (e.g. date format). Use YYYY-MM-DD for birthdate.") from exc
     except Exception as exc:  # pragma: no cover
         logger.exception("Signup failed: %s", exc)
         detail = "Signup failed."
@@ -254,4 +258,8 @@ def signup(request: SignupRequest):
             detail = (
                 "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
             )
+        else:
+            err_msg = str(exc).strip()
+            if err_msg:
+                detail = f"Signup failed: {err_msg}"
         raise HTTPException(status_code=500, detail=detail) from exc
