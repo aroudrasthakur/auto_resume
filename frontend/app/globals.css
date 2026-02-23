@@ -31,6 +31,21 @@
   --ring: 221.2 83.2% 53.3%;
 }
 
+/* Landing page design tokens (when .landing-page is on a parent) */
+.landing-page {
+  --bg: #070707;
+  --s1: #0d0d0d;
+  --s2: #101010;
+  --b1: #1a1a1a;
+  --b2: #252525;
+  --text: #f0ede8;
+  --muted: #4a4a4a;
+  --muted2: #2e2e2e;
+  --gold: #c9a96e;
+  --gold-lt: #e8d5b0;
+  --gold-dk: #8b6d2f;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: 222.2 84% 4.9%;
@@ -78,6 +93,87 @@ body {
 @media (min-width: 768px) {
   .show-mobile {
     display: none !important;
+  }
+}
+
+/* Landing: custom cursor hide body cursor on desktop when cursor is shown */
+@media (pointer: fine) {
+  body.landing-cursor-active {
+    cursor: none;
+  }
+}
+@media (pointer: coarse) {
+  .landing-cursor-wrap {
+    display: none !important;
+  }
+}
+
+/* Landing: wave divider animation */
+@keyframes waveFlow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+/* Landing: ticker */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-animation {
+  animation: ticker 20s linear infinite;
+}
+
+/* Landing: scroll indicator line (sliding gold line) */
+@keyframes scrollLine {
+  from {
+    left: -100%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+/* Landing: blinking cursor in mockup */
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Landing: pulsing dot */
+@keyframes pulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* Landing: orb float */
+@keyframes orbFloat {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(20px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-15px, 10px) scale(0.98);
   }
 }
 
