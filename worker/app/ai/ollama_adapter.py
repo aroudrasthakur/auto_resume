@@ -1,7 +1,7 @@
 """Ollama adapter for local AI models."""
 
 import json
-from typing import Dict
+from typing import Callable, Dict, Optional
 
 import httpx
 
@@ -24,6 +24,7 @@ class OllamaAdapter(AIProvider):
         page_count: int,
         include_projects: bool,
         include_skills: bool,
+        update_step: Optional[Callable[[str], None]] = None,
     ) -> Dict:
         """Generate resume content using Ollama."""
         prompt = f"""Generate resume content from this profile:

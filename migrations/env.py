@@ -35,7 +35,8 @@ if not database_url:
         "Please set it in your .env file or environment. "
         "Example: DATABASE_URL=postgresql://user:pass@host:5432/dbname"
     )
-config.set_main_option("sqlalchemy.url", database_url)
+# Escape % for ConfigParser (it interprets % as interpolation, e.g. %40 in passwords)
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

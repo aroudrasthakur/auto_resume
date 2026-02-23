@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { useDisplayUser } from '@/lib/use-display-user'
 import { apiFetch } from '@/lib/api'
 import { ArrowLeft, Mail, Briefcase, GraduationCap, Plus } from 'lucide-react'
 
@@ -162,8 +163,7 @@ export default function ProfilePage() {
     }
   }
 
-  const displayName = user?.nickname || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name) || 'User'
-  const initial = user?.nickname?.charAt(0).toUpperCase() || user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'
+  const { displayName, initial } = useDisplayUser()
 
   const inputClass = 'w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none'
   const labelClass = 'mb-1 block font-mono text-xs uppercase text-muted'

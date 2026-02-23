@@ -1,7 +1,14 @@
 """Main FastAPI application."""
 
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# Add project root so worker package can be imported (for Celery task dispatch)
+_project_root = Path(__file__).resolve().parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

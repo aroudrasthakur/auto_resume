@@ -71,7 +71,7 @@ export default function StatHero({
       </Link>
 
       <Link
-        href="/generate"
+        href="/resumes"
         className="group flex flex-col justify-center bg-s1 p-5 transition-colors hover:bg-s2"
       >
         <div className="flex items-center justify-between">

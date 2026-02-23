@@ -60,14 +60,19 @@ def render_latex(
         elif kind == "website":
             contact_dict["website"] = escape_latex(value)
 
-    # Prepare template context
+    # Normalize skills: ai_output may have {"categories": [...]} or a raw list
+    skills_raw = ai_output.get("skills", [])
+    skills_categories = (
+        skills_raw.get("categories", skills_raw) if isinstance(skills_raw, dict) else skills_raw
+    )
+
     context = {
         "name": escape_latex(profile.get("name", "")),
         **contact_dict,
         "education": ai_output.get("education", []),
         "experience": ai_output.get("experience", []),
         "projects": ai_output.get("projects", []) if include_projects else [],
-        "skills": {"categories": ai_output.get("skills", [])} if include_skills else None,
+        "skills": {"categories": skills_categories} if include_skills else None,
         "include_projects": include_projects,
         "include_skills": include_skills,
     }

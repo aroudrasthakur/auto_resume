@@ -4,6 +4,8 @@ import json
 from typing import List
 from uuid import UUID
 
+from shared.app.utils.compress import compress_text, pack_profile_snapshot
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -135,8 +137,8 @@ async def generate_resume(
                 "page_count": generate_request.page_count,
                 "include_projects": generate_request.include_projects,
                 "include_skills": generate_request.include_skills,
-                "profile_snapshot": json.dumps(profile_snapshot),
-                "jd_snapshot": jd_text,
+                "profile_snapshot": pack_profile_snapshot(profile_snapshot),
+                "jd_snapshot": compress_text(jd_text),
             }
         )
         .execute()
@@ -151,14 +153,20 @@ async def generate_resume(
 
     # Enqueue Celery task
     if celery_app:
-        celery_app.send_task(
-            "worker.app.tasks.generate_resume.generate_resume",
-            args=[str(generated_resume_id)],
-        )
+        try:
+            celery_app.send_task(
+                "worker.app.tasks.generate_resume.generate_resume",
+                args=[str(generated_resume_id)],
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Worker not available. Start Redis (docker compose up -d redis) and the Celery worker (cd worker && celery -A app.celery_app worker --loglevel=info). Error: {e}",
+            ) from e
     else:
-        # Fallback: could use Redis directly or raise error
         raise HTTPException(
-            status_code=500, detail="Worker not available"
+            status_code=503,
+            detail="Worker not available. Start Redis (docker compose up -d redis) and the Celery worker (cd worker && celery -A app.celery_app worker --loglevel=info).",
         )
 
     return ResumeGenerateResponse(
@@ -232,6 +240,27 @@ async def get_resume_files(
     return files
 
 
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("100/minute")
+async def delete_resume(
+    request: Request,
+    resume_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Delete a generated resume (any status including QUEUED/RUNNING)."""
+    result = (
+        supabase.table("generated_resume")
+        .delete()
+        .eq("id", str(resume_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    # Supabase delete returns deleted rows; empty means not found or not owned
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+
 @router.get("", response_model=List[dict])
 @limiter.limit("100/minute")
 async def list_resumes(
@@ -239,13 +268,23 @@ async def list_resumes(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """List user's generated resumes."""
+    """List user's generated resumes with profile name."""
     result = (
         supabase.table("generated_resume")
-        .select("*")
+        .select("id, user_id, profile_id, job_description_id, template_id, status, page_count, include_projects, include_skills, created_at, updated_at, failure_reason, profile(name)")
         .eq("user_id", current_user["user_id"])
         .order("created_at", desc=True)
         .execute()
     )
-    return result.data or []
+    # Flatten profile name into resume record
+    data = result.data or []
+    for r in data:
+        prof = r.pop("profile", None)
+        if isinstance(prof, dict):
+            r["profile_name"] = prof.get("name", "")
+        elif isinstance(prof, list) and prof:
+            r["profile_name"] = prof[0].get("name", "") if isinstance(prof[0], dict) else ""
+        else:
+            r["profile_name"] = ""
+    return data
 

@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Briefcase,
   FileText,
+  FileStack,
   Code2,
   Sparkles,
   X,
@@ -17,10 +18,11 @@ type DashboardRightPanelProps = {
 
 const profileSections = [
   { name: 'Personal Info', href: '/profile', icon: User, complete: false },
-  { name: 'Education', href: '/profile', icon: GraduationCap, complete: false },
   { name: 'Experience', href: '/experience', icon: Briefcase, complete: false },
+  { name: 'Education', href: '/education', icon: GraduationCap, complete: false },
   { name: 'Skills', href: '/profile', icon: FileText, complete: false },
   { name: 'Projects', href: '/profile', icon: Code2, complete: false },
+  { name: 'Resumes', href: '/resumes', icon: FileStack, complete: false },
 ]
 
 const insights = [

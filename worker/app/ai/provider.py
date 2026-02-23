@@ -2,7 +2,7 @@
 
 import os
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Callable, Dict, Optional
 
 from app.core.config import settings
 
@@ -18,8 +18,9 @@ class AIProvider(ABC):
         page_count: int,
         include_projects: bool,
         include_skills: bool,
+        update_step: Optional[Callable[[str], None]] = None,
     ) -> Dict:
-        """Generate resume content."""
+        """Generate resume content. update_step is called with current step name for live status."""
         pass
 
     @abstractmethod

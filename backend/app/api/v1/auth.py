@@ -1,15 +1,20 @@
 """Authentication routes for Cognito username/password login and signup."""
 
+import base64
+import hashlib
+import hmac
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import boto3
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -45,6 +50,8 @@ class LoginResponse(BaseModel):
 
 
 class SignupRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     username: str = Field(..., min_length=3)
     password: str = Field(..., min_length=8)
     email: EmailStr
@@ -73,15 +80,24 @@ def login(request: LoginRequest):
             "expires_at": int((datetime.now(timezone.utc) + timedelta(seconds=3600)).timestamp() * 1000),
         }
         return LoginResponse(**fake_tokens)
-    
+
+    if not settings.COGNITO_CLIENT_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Auth not configured. Set COGNITO_CLIENT_ID or DEV_AUTH_BYPASS=true for local development.",
+        )
+
     client = _cognito_client()
+    auth_params: dict = {
+        "USERNAME": request.username_or_email,
+        "PASSWORD": request.password,
+    }
+    if settings.COGNITO_CLIENT_SECRET:
+        auth_params["SECRET_HASH"] = _secret_hash(request.username_or_email)
     try:
         resp = client.initiate_auth(
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": request.username_or_email,
-                "PASSWORD": request.password,
-            },
+            AuthParameters=auth_params,
             ClientId=settings.COGNITO_CLIENT_ID,
         )
         tokens = _build_auth_tokens(resp["AuthenticationResult"])
@@ -97,7 +113,11 @@ def login(request: LoginRequest):
         detail = message_map.get(code, "Authentication failed.")
         raise HTTPException(status_code=401, detail=detail) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail="Login failed.") from exc
+        logger.exception("Login failed: %s", exc)
+        detail = "Login failed."
+        if "credentials" in str(exc).lower() or "NoCredentialsError" in type(exc).__name__:
+            detail = "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+        raise HTTPException(status_code=500, detail=detail) from exc
 
 
 @router.post("/signup", response_model=SignupResponse, tags=["auth"])
@@ -110,21 +130,30 @@ def signup(request: SignupRequest):
             user_confirmed=True,
             message="Signup successful (dev mode).",
         )
-    
-    client = _cognito_client()
-    try:
-        resp = client.sign_up(
-            ClientId=settings.COGNITO_CLIENT_ID,
-            Username=request.username,
-            Password=request.password,
-            UserAttributes=[
-                {"Name": "email", "Value": request.email},
-                {"Name": "given_name", "Value": request.first_name},
-                {"Name": "family_name", "Value": request.last_name},
-                {"Name": "nickname", "Value": request.nickname},
-                {"Name": "birthdate", "Value": request.birthdate},
-            ],
+
+    if not settings.COGNITO_CLIENT_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Auth not configured. Set COGNITO_CLIENT_ID or DEV_AUTH_BYPASS=true for local development.",
         )
+
+    client = _cognito_client()
+    sign_up_kwargs: dict = {
+        "ClientId": settings.COGNITO_CLIENT_ID,
+        "Username": request.username,
+        "Password": request.password,
+        "UserAttributes": [
+            {"Name": "email", "Value": request.email},
+            {"Name": "given_name", "Value": request.first_name},
+            {"Name": "family_name", "Value": request.last_name},
+            {"Name": "nickname", "Value": request.nickname},
+            {"Name": "birthdate", "Value": request.birthdate},
+        ],
+    }
+    if settings.COGNITO_CLIENT_SECRET:
+        sign_up_kwargs["SecretHash"] = _secret_hash(request.username)
+    try:
+        resp = client.sign_up(**sign_up_kwargs)
         return SignupResponse(
             user_sub=resp.get("UserSub"),
             user_confirmed=resp.get("UserConfirmed", False),
@@ -134,14 +163,20 @@ def signup(request: SignupRequest):
         )
     except ClientError as exc:
         code = exc.response["Error"].get("Code")
+        cognito_msg = exc.response["Error"].get("Message", "")
+        logger.warning("Cognito signup error: %s - %s", code, cognito_msg)
         message_map = {
             "UsernameExistsException": "Username already exists.",
             "InvalidPasswordException": "Password not strong enough.",
-            "InvalidParameterException": "Invalid input provided.",
+            "InvalidParameterException": cognito_msg or "Invalid input provided.",
         }
-        detail = message_map.get(code, "Signup failed.")
+        detail = message_map.get(code, cognito_msg or str(exc))
         status = 400 if code in message_map else 500
         raise HTTPException(status_code=status, detail=detail) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail="Signup failed.") from exc
+        logger.exception("Signup failed: %s", exc)
+        detail = "Signup failed."
+        if "credentials" in str(exc).lower() or "NoCredentialsError" in type(exc).__name__:
+            detail = "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
+        raise HTTPException(status_code=500, detail=detail) from exc
 
