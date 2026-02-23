@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Check } from 'lucide-react'
 import gsap from 'gsap'
 import WaveCanvas from '@/components/WaveCanvas'
 import Cursor from '@/components/Cursor'
@@ -13,12 +13,20 @@ import SignUpLeft from '@/components/auth/SignUpLeft'
 import FormField from '@/components/auth/FormField'
 import PasswordStrength from '@/components/auth/PasswordStrength'
 import PasswordMatchIndicator from '@/components/auth/PasswordMatchIndicator'
-import { signupWithDetails } from '@/lib/auth'
+import StepIndicator from '@/components/auth/StepIndicator'
+import EmailSentCard from '@/components/auth/EmailSentCard'
+import OtpInput from '@/components/auth/OtpInput'
+import { signupWithDetails, confirmSignUp, resendSignUpCode } from '@/lib/auth'
 import { useAuth } from '@/lib/auth-context'
 
 export default function SignUpPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading } = useAuth()
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupUsername, setSignupUsername] = useState('')
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(''))
+  const [timerSecs, setTimerSecs] = useState(0)
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -35,6 +43,22 @@ export default function SignUpPage() {
   const formRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const fieldsRef = useRef<HTMLDivElement>(null)
+
+  const startResendTimer = useCallback(() => {
+    setTimerSecs(60)
+  }, [])
+
+  useEffect(() => {
+    if (timerSecs <= 0) return
+    const t = setInterval(() => setTimerSecs((s) => s - 1), 1000)
+    return () => clearInterval(t)
+  }, [timerSecs])
+
+  useEffect(() => {
+    if (step !== 3) return
+    const t = setTimeout(() => router.push('/login'), 4000)
+    return () => clearTimeout(t)
+  }, [step, router])
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.push('/dashboard')
@@ -72,9 +96,47 @@ export default function SignUpPage() {
         nickname: form.firstName || '-',
         birthdate: form.birthdate,
       })
-      setSuccess(result.message)
+      if (!result.user_confirmed) {
+        setSignupUsername(form.username)
+        setSignupEmail(form.email)
+        setOtp(Array(6).fill(''))
+        startResendTimer()
+        setStep(2)
+      } else {
+        setSuccess(result.message)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const code = otp.join('')
+    if (code.length !== 6) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await confirmSignUp({ username: signupUsername, confirmationCode: code })
+      setStep(3)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Verification failed')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (timerSecs > 0) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await resendSignUpCode(signupUsername)
+      startResendTimer()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not resend code')
     } finally {
       setSubmitting(false)
     }
@@ -92,7 +154,11 @@ export default function SignUpPage() {
     <div className="auth-page min-w-0 overflow-x-hidden overflow-y-hidden bg-bg text-text flex flex-col h-screen">
       <WaveCanvas />
       <Cursor />
-      <AuthTopBar />
+      <AuthTopBar
+        backLabel={step === 2 ? 'Back to form' : 'Back to Home'}
+        backHref={step === 2 ? '#' : '/'}
+        onBackClick={step === 2 ? () => setStep(1) : undefined}
+      />
       <div className="auth-layout">
         <AuthLeftPanel panelClassName="auth-left-panel-signup">
           <div ref={leftRef} className="h-full min-h-0 flex flex-col">
@@ -101,39 +167,51 @@ export default function SignUpPage() {
         </AuthLeftPanel>
         <div className="auth-right auth-right-signup">
           <div ref={formRef} className="auth-form-wrap auth-form-wrap-signup signup-form">
-            <div
-              style={{
-                fontFamily: "'DM Mono', monospace",
-                fontSize: '9px',
-                letterSpacing: '3px',
-                textTransform: 'uppercase',
-                color: '#c9a96e',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '16px',
-              }}
-            >
-              <span style={{ width: '20px', height: '1px', background: '#c9a96e', display: 'block' }} />
-              New account
-            </div>
-            <h1
-              ref={titleRef}
-              className="form-title"
-              style={{
-                fontFamily: "'DM Serif Display', serif",
-                fontSize: '32px',
-                letterSpacing: '-0.02em',
-                lineHeight: '1.15',
-                color: '#f0ede8',
-                marginBottom: '4px',
-              }}
-            >
-              Let&apos;s get you <em style={{ color: '#c9a96e', fontStyle: 'italic' }}>set up.</em>
-            </h1>
-            <p className="text-muted mb-2 mt-0" style={{ fontSize: '12px' }}>
-              Takes under 2 minutes.
-            </p>
+            {step === 1 && (
+              <>
+                <p
+                  className="mb-0"
+                  style={{
+                    fontFamily: 'var(--font-mono), monospace',
+                    fontSize: '9px',
+                    letterSpacing: '3px',
+                    textTransform: 'uppercase',
+                    color: 'var(--muted)',
+                  }}
+                >
+                  New account
+                </p>
+                <h1 ref={titleRef} className="form-title font-heading text-text mt-0.5">
+                  Let&apos;s get you <em className="text-gold not-italic">set up.</em>
+                </h1>
+                <p className="text-muted mb-2 mt-0" style={{ fontSize: '12px' }}>
+                  Takes under 2 minutes.
+                </p>
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <StepIndicator current={2} total={2} />
+                <h1 className="form-title font-heading text-text mt-4 mb-2">
+                  Verify your <em className="text-gold not-italic">email</em>
+                </h1>
+                <p className="text-muted mb-4" style={{ fontSize: '12px' }}>
+                  We sent a 6-digit code to your inbox.
+                </p>
+              </>
+            )}
+            {step === 3 && (
+              <div className="text-center py-6">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold text-gold mb-4">
+                  <Check className="h-8 w-8" />
+                </div>
+                <h3 className="font-heading text-xl text-text mb-1">
+                  Account <em className="text-gold not-italic">verified.</em>
+                </h3>
+                <p className="text-sm text-muted">Redirecting you to sign in...</p>
+              </div>
+            )}
+            {step === 1 && (
             <form onSubmit={handleSubmit} className="signup-form-fields" ref={fieldsRef}>
               <div className="field-row grid grid-cols-2 gap-[14px] max-sm:grid-cols-1">
                 <FormField
@@ -225,18 +303,52 @@ export default function SignUpPage() {
                 )}
               </button>
             </form>
-            <p className="text-center mt-2 text-muted" style={{ fontSize: '10px' }}>
-              By creating an account you agree to our{' '}
-              <Link href="/terms" className="text-gold hover:text-gold-lt">Terms</Link>
-              {' '}and{' '}
-              <Link href="/privacy" className="text-gold hover:text-gold-lt">Privacy Policy</Link>
-            </p>
-            <p className="text-center mt-2 text-muted" style={{ fontSize: '12px' }}>
-              Already have an account?{' '}
-              <Link href="/auth/signin" className="text-gold hover:text-gold-lt">
-                Sign in
-              </Link>
-            </p>
+            )}
+            {step === 2 && (
+              <div className="signup-form-fields">
+                <EmailSentCard email={signupEmail} />
+                <form onSubmit={handleVerify} className="space-y-4 mt-4">
+                  <OtpInput
+                    value={otp}
+                    onChange={setOtp}
+                    error={error || undefined}
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={timerSecs > 0 || submitting}
+                      className="text-sm text-gold hover:text-gold-lt disabled:text-muted disabled:cursor-not-allowed"
+                    >
+                      {timerSecs > 0 ? `Resend in ${timerSecs}s` : 'Resend code'}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting || otp.join('').length !== 6}
+                      className="h-10 px-6 rounded-lg bg-gold text-bg font-medium hover:bg-gold-lt focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            {step !== 3 && (
+              <>
+                <p className="text-center mt-2 text-muted" style={{ fontSize: '10px' }}>
+                  By creating an account you agree to our{' '}
+                  <Link href="/terms" className="text-gold hover:text-gold-lt">Terms</Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" className="text-gold hover:text-gold-lt">Privacy Policy</Link>
+                </p>
+                <p className="text-center mt-2 text-muted" style={{ fontSize: '12px' }}>
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-gold hover:text-gold-lt">
+                    Sign in
+                  </Link>
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
