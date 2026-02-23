@@ -67,6 +67,76 @@ class SignupResponse(BaseModel):
     message: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    username: str = Field(..., description="Cognito username or email (login identifier)")
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class ConfirmForgotPasswordRequest(BaseModel):
+    model_config = {"populate_by_name": True}
+    username: str = Field(..., description="Cognito username or email")
+    confirmation_code: str = Field(..., min_length=6, max_length=6, alias="confirmationCode")
+    new_password: str = Field(..., min_length=8, alias="newPassword")
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse, tags=["auth"])
+def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset code to the user's email via Cognito."""
+    if settings.DEV_AUTH_BYPASS:
+        return ForgotPasswordResponse(message="If this account existed, a reset code would have been sent (dev mode).")
+    client = _cognito_client()
+    try:
+        client.forgot_password(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            Username=request.username.strip(),
+        )
+        return ForgotPasswordResponse(message="Reset code sent. Check your email.")
+    except ClientError as exc:
+        code = exc.response["Error"].get("Code")
+        message_map = {
+            "UserNotFoundException": "No account found with this email.",
+            "LimitExceededException": "Too many attempts. Try again later.",
+            "InvalidParameterException": "Invalid email or username.",
+        }
+        detail = message_map.get(code, "Could not send reset code.")
+        status = 400 if code in message_map else 500
+        raise HTTPException(status_code=status, detail=detail) from exc
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail="Failed to send reset code.") from exc
+
+
+@router.post("/confirm-forgot-password", response_model=ForgotPasswordResponse, tags=["auth"])
+def confirm_forgot_password(request: ConfirmForgotPasswordRequest):
+    """Confirm forgot password with code and set new password."""
+    if settings.DEV_AUTH_BYPASS:
+        return ForgotPasswordResponse(message="Password reset successful (dev mode).")
+    client = _cognito_client()
+    try:
+        client.confirm_forgot_password(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            Username=request.username.strip(),
+            ConfirmationCode=request.confirmation_code.strip(),
+            Password=request.new_password,
+        )
+        return ForgotPasswordResponse(message="Password has been reset. You can sign in with your new password.")
+    except ClientError as exc:
+        code = exc.response["Error"].get("Code")
+        message_map = {
+            "CodeMismatchException": "Invalid or expired code. Request a new one.",
+            "ExpiredCodeException": "Code has expired. Request a new one.",
+            "UserNotFoundException": "No account found with this email.",
+            "InvalidPasswordException": "Password does not meet requirements.",
+        }
+        detail = message_map.get(code, "Could not reset password.")
+        status = 400 if code in message_map else 500
+        raise HTTPException(status_code=status, detail=detail) from exc
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail="Failed to reset password.") from exc
+
+
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 def login(request: LoginRequest):
     """Authenticate user against Cognito without Hosted UI."""
