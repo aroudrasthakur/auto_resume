@@ -60,6 +60,20 @@ class SignupResponse(BaseModel):
     message: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    username: str = Field(..., description="Cognito username or email (login identifier)")
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class ConfirmForgotPasswordRequest(BaseModel):
+    username: str = Field(..., description="Cognito username or email")
+    confirmation_code: str = Field(..., min_length=6, max_length=6, alias="confirmationCode")
+    new_password: str = Field(..., min_length=8, alias="newPassword")
+
+
 @router.post("/login", response_model=LoginResponse, tags=["auth"])
 def login(request: LoginRequest):
     """Authenticate user against Cognito without Hosted UI."""

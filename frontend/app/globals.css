@@ -38,6 +38,7 @@
   --s2: #101010;
   --b1: #1a1a1a;
   --b2: #252525;
+  --b3: #303030;
   --text: #f0ede8;
   --muted: #4a4a4a;
   --muted2: #2e2e2e;
@@ -107,6 +108,14 @@ body {
     display: none !important;
   }
 }
+@media (max-width: 900px) {
+  .auth-page .landing-cursor-wrap {
+    display: none !important;
+  }
+  body:has(.auth-page) {
+    cursor: auto;
+  }
+}
 
 /* Landing: wave divider animation */
 @keyframes waveFlow {
@@ -161,6 +170,20 @@ body {
     transform: scale(1.2);
     opacity: 0.8;
   }
+}
+
+/* Auth: compact form on sign-up only so it fits in viewport without scroll */
+.auth-page .signup-form .field-label {
+  margin-bottom: 5px;
+}
+.auth-page .signup-form .field-input {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.auth-page .signup-form .field + .field,
+.auth-page .signup-form .field-row + .field,
+.auth-page .signup-form .field + .field-row {
+  margin-top: 0;
 }
 
 /* Landing: orb float */
