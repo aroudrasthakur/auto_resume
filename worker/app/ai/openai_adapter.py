@@ -1,25 +1,17 @@
 """OpenAI adapter for AI content generation."""
 
-import json
 from typing import Dict
 
-from openai import OpenAI
-
+from app.ai.langchain_pipeline import run_pipeline
 from app.ai.provider import AIProvider
-from app.core.config import settings
-from shared.app.constants import PAGE_COUNT_LIMITS
 
 
 class OpenAIAdapter(AIProvider):
-    """OpenAI adapter using GPT-4."""
+    """OpenAI adapter using LangChain multi-step pipeline."""
 
     def __init__(self):
-        """Initialize OpenAI client."""
-        api_key = settings.OPENAI_API_KEY
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY is required")
-        self.client = OpenAI(api_key=api_key)
-        self.model = "gpt-4o"
+        """Initialize adapter (uses LangChain pipeline with OpenAI)."""
+        pass
 
     def generate_content(
         self,
@@ -29,41 +21,14 @@ class OpenAIAdapter(AIProvider):
         include_projects: bool,
         include_skills: bool,
     ) -> Dict:
-        """Generate resume content using OpenAI."""
-        limits = PAGE_COUNT_LIMITS.get(page_count, PAGE_COUNT_LIMITS[3])
-
-        system_prompt = """You are a resume content selector and optimizer.
-ONLY use content from the provided profile.
-DO NOT invent companies, dates, degrees, or accomplishments.
-Return valid JSON matching the schema.
-Prioritize content most relevant to the job description."""
-
-        user_prompt = f"""Job Description:
-{job_description}
-
-Profile Data:
-{json.dumps(profile_snapshot, indent=2)}
-
-Page Count: {page_count}
-Max bullets per experience: {limits.get('max_bullets_per_experience', 999)}
-Max projects: {limits.get('max_projects', 999)}
-Include projects: {include_projects}
-Include skills: {include_skills}
-
-Select and optimize content to fit within these constraints."""
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,
+        """Generate resume content using LangChain 4-step pipeline."""
+        return run_pipeline(
+            profile_snapshot=profile_snapshot,
+            job_description=job_description,
+            page_count=page_count,
+            include_projects=include_projects,
+            include_skills=include_skills,
         )
-
-        content = response.choices[0].message.content
-        return json.loads(content)
 
     def get_provider_name(self) -> str:
         """Get provider name."""
