@@ -27,12 +27,12 @@ export default function StatHero({
         className="group relative flex flex-col justify-end bg-s1 p-5 transition-colors hover:bg-s2 md:row-span-2"
       >
         <span
-          className="font-heading text-3xl text-text md:text-4xl"
+          className="font-heading text-4xl text-text md:text-5xl"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           {profileStatus}
         </span>
-        <span className="font-mono mt-1 text-xs text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
+        <span className="font-mono mt-1.5 text-xs uppercase tracking-wider text-muted" style={{ fontFamily: 'var(--font-mono)' }}>
           Profile status
         </span>
         <span className="absolute bottom-4 right-4 text-muted opacity-0 transition-opacity group-hover:opacity-100">

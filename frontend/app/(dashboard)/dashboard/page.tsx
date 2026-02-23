@@ -63,8 +63,8 @@ export default function DashboardPage() {
       <section className="animate-fade-up delay-150">
         <div className="relative mb-4 flex items-center gap-4">
           <p
-            className="font-mono text-[9px] uppercase text-muted shrink-0"
-            style={{ fontFamily: 'var(--font-mono)', letterSpacing: '3px' }}
+            className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted shrink-0"
+            style={{ fontFamily: 'var(--font-mono)' }}
           >
             Next steps
           </p>

@@ -15,6 +15,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/profile')) return 'Profile'
   if (pathname.startsWith('/experience')) return 'Experience'
   if (pathname.startsWith('/generate')) return 'Generate Resume'
+  if (pathname.startsWith('/resumes')) return 'Resume'
   return 'Dashboard'
 }
 
@@ -30,7 +31,7 @@ export default function TopBar({ onMenuClick, showPanelToggle, onPanelToggle }: 
 
   return (
     <header
-      className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-b1 bg-bg px-4 md:px-6"
+      className="sticky top-0 z-[45] flex h-14 items-center justify-between border-b border-b1 bg-bg/95 backdrop-blur-sm px-4 md:px-6"
       style={{
         height: '56px',
         borderBottomColor: 'var(--b1)',
@@ -46,19 +47,20 @@ export default function TopBar({ onMenuClick, showPanelToggle, onPanelToggle }: 
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-baseline md:gap-4">
           <h1
-            className="font-heading text-base font-normal text-text truncate"
-            style={{ fontSize: '16px', fontFamily: 'var(--font-heading)' }}
+            className="font-heading text-xl font-normal tracking-tight text-text truncate md:text-2xl"
+            style={{ fontFamily: 'var(--font-heading)' }}
           >
             {title}
           </h1>
-          <p
-            className="font-mono mt-0.5 hidden text-[10px] text-muted md:block"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}
+          <span
+            className="hidden font-mono text-xs text-muted md:inline md:text-[13px]"
+            style={{ fontFamily: 'var(--font-mono)' }}
           >
-            {dateStr}
-          </p>
+            <span className="text-muted2">·</span>
+            <span className="ml-2">{dateStr}</span>
+          </span>
         </div>
       </div>
 
