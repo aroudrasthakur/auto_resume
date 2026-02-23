@@ -8,6 +8,7 @@ from supabase import Client
 from shared.app.schemas.profile import (
     ContactCreate,
     ContactResponse,
+    ProfileCompletenessResponse,
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
@@ -201,4 +202,105 @@ class ProfileService:
             .execute()
         )
         return len(result.data) > 0
+
+    def check_completeness(
+        self, profile_id: Optional[UUID] = None
+    ) -> ProfileCompletenessResponse:
+        """
+        Check if a profile is complete for resume generation.
+
+        Complete means: profile exists with name, at least one contact,
+        at least one experience with at least one bullet, at least one education.
+        """
+        missing: List[str] = []
+
+        # Resolve profile_id - use first profile if not specified
+        if profile_id is None:
+            profiles_result = (
+                self.supabase.table("profile")
+                .select("id")
+                .eq("user_id", self.user_id)
+                .limit(1)
+                .execute()
+            )
+            if not profiles_result.data:
+                return ProfileCompletenessResponse(
+                    is_complete=False,
+                    missing_sections=["profile"],
+                    profile_id=None,
+                )
+            profile_id = profiles_result.data[0]["id"]
+
+        profile_id_str = str(profile_id)
+
+        # Check profile exists with name
+        profile_result = (
+            self.supabase.table("profile")
+            .select("name")
+            .eq("id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .execute()
+        )
+        if not profile_result.data:
+            return ProfileCompletenessResponse(
+                is_complete=False,
+                missing_sections=["profile"],
+                profile_id=None,
+            )
+        if not (profile_result.data[0].get("name") or "").strip():
+            missing.append("profile")
+
+        # Check contacts
+        contacts_result = (
+            self.supabase.table("profile_contact")
+            .select("id")
+            .eq("profile_id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .execute()
+        )
+        contact_count = len(contacts_result.data) if contacts_result.data else 0
+        if contact_count < 1:
+            missing.append("contacts")
+
+        # Check experience with at least one bullet
+        exp_result = (
+            self.supabase.table("experience")
+            .select("id")
+            .eq("profile_id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .execute()
+        )
+        experiences = exp_result.data or []
+        has_valid_experience = False
+        for exp in experiences:
+            bullet_result = (
+                self.supabase.table("experience_bullet")
+                .select("id")
+                .eq("experience_id", exp["id"])
+                .limit(1)
+                .execute()
+            )
+            if bullet_result.data:
+                has_valid_experience = True
+                break
+        if not has_valid_experience:
+            missing.append("experience")
+
+        # Check education
+        edu_result = (
+            self.supabase.table("education")
+            .select("id")
+            .eq("profile_id", profile_id_str)
+            .eq("user_id", self.user_id)
+            .limit(1)
+            .execute()
+        )
+        if not edu_result.data:
+            missing.append("education")
+
+        return ProfileCompletenessResponse(
+            is_complete=len(missing) == 0,
+            missing_sections=missing,
+            profile_id=profile_id_str,
+        )
 

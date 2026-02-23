@@ -36,15 +36,57 @@ async def list_experience(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """List all experience entries."""
+    """List all experience entries with bullets."""
     result = (
         supabase.table("experience")
-        .select("*")
+        .select("*, experience_bullet(*)")
         .eq("user_id", current_user["user_id"])
         .order("start_date", desc=True)
         .execute()
     )
     return result.data or []
+
+
+@router.post("/{experience_id}/bullets", status_code=status.HTTP_201_CREATED)
+@limiter.limit("100/minute")
+async def add_experience_bullets(
+    request: Request,
+    experience_id: UUID,
+    bullets_data: dict,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Add bullets to an experience entry."""
+    # Verify experience exists and belongs to user
+    exp_result = (
+        supabase.table("experience")
+        .select("id")
+        .eq("id", str(experience_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    if not exp_result.data:
+        raise HTTPException(status_code=404, detail="Experience not found")
+
+    bullets = bullets_data.get("bullets", [])
+    if not bullets:
+        return {"added": 0}
+
+    rows = []
+    for i, bullet_text in enumerate(bullets):
+        if bullet_text and str(bullet_text).strip():
+            rows.append({
+                "experience_id": str(experience_id),
+                "user_id": current_user["user_id"],
+                "bullet": str(bullet_text).strip(),
+                "sort_order": i,
+            })
+
+    if not rows:
+        return {"added": 0}
+
+    result = supabase.table("experience_bullet").insert(rows).execute()
+    return {"added": len(result.data or [])}
 
 
 @router.get("/{experience_id}")
@@ -55,10 +97,10 @@ async def get_experience(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase_client),
 ):
-    """Get experience entry."""
+    """Get experience entry with bullets."""
     result = (
         supabase.table("experience")
-        .select("*")
+        .select("*, experience_bullet(*)")
         .eq("id", str(experience_id))
         .eq("user_id", current_user["user_id"])
         .execute()

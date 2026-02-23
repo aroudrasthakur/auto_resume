@@ -2,45 +2,40 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Briefcase, Plus, Trash2 } from 'lucide-react'
+import { GraduationCap, Plus, Trash2 } from 'lucide-react'
 
 interface Profile {
   id: string
   name: string
 }
 
-interface ExperienceBullet {
-  id: string
-  bullet: string
-}
-
-interface Experience {
+interface Education {
   id: string
   profile_id: string
-  company: string
-  role: string
-  location?: string
+  school: string
+  degree?: string
+  major?: string
+  gpa?: string
   start_date?: string
   end_date?: string
-  is_current?: boolean
-  experience_bullet?: ExperienceBullet[]
+  location?: string
 }
 
-export default function ExperiencePage() {
+export default function EducationPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [experiences, setExperiences] = useState<Experience[]>([])
+  const [educations, setEducations] = useState<Education[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    company: '',
-    role: '',
-    location: '',
+    school: '',
+    degree: '',
+    major: '',
+    gpa: '',
     start_date: '',
     end_date: '',
-    is_current: false,
-    bullets: [''] as string[],
+    location: '',
   })
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -51,18 +46,18 @@ export default function ExperiencePage() {
 
   const fetchData = async () => {
     try {
-      const [profilesRes, expRes] = await Promise.all([
+      const [profilesRes, eduRes] = await Promise.all([
         fetch(`${apiUrl}/api/v1/profiles`, { headers: getAuthHeaders() }),
-        fetch(`${apiUrl}/api/v1/experience`, { headers: getAuthHeaders() }),
+        fetch(`${apiUrl}/api/v1/education`, { headers: getAuthHeaders() }),
       ])
       if (profilesRes.ok) {
         const p = await profilesRes.json()
         setProfiles(p)
         if (p.length > 0 && !selectedProfileId) setSelectedProfileId(p[0].id)
       }
-      if (expRes.ok) {
-        const e = await expRes.json()
-        setExperiences(e)
+      if (eduRes.ok) {
+        const e = await eduRes.json()
+        setEducations(e)
       }
     } catch (err) {
       console.error(err)
@@ -79,60 +74,29 @@ export default function ExperiencePage() {
     if (profiles.length > 0 && !selectedProfileId) setSelectedProfileId(profiles[0].id)
   }, [profiles])
 
-  const filteredExperiences = experiences.filter((e) => e.profile_id === selectedProfileId)
-
-  const addBullet = () => {
-    setFormData((p) => ({ ...p, bullets: [...p.bullets, ''] }))
-  }
-
-  const updateBullet = (i: number, v: string) => {
-    setFormData((p) => ({
-      ...p,
-      bullets: p.bullets.map((b, j) => (j === i ? v : b)),
-    }))
-  }
-
-  const removeBullet = (i: number) => {
-    setFormData((p) => ({ ...p, bullets: p.bullets.filter((_, j) => j !== i) }))
-  }
+  const filteredEducations = educations.filter((e) => e.profile_id === selectedProfileId)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProfileId) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/api/v1/experience`, {
+      const res = await fetch(`${apiUrl}/api/v1/education`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           profile_id: selectedProfileId,
-          company: formData.company,
-          role: formData.role,
-          location: formData.location || undefined,
+          school: formData.school,
+          degree: formData.degree || undefined,
+          major: formData.major || undefined,
+          gpa: formData.gpa || undefined,
           start_date: formData.start_date || undefined,
-          end_date: formData.is_current ? undefined : formData.end_date || undefined,
-          is_current: formData.is_current,
+          end_date: formData.end_date || undefined,
+          location: formData.location || undefined,
         }),
       })
       if (res.ok) {
-        const created = await res.json()
-        const bulletsToAdd = formData.bullets.filter((b) => b.trim())
-        if (bulletsToAdd.length > 0) {
-          await fetch(`${apiUrl}/api/v1/experience/${created.id}/bullets`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ bullets: bulletsToAdd }),
-          })
-        }
-        setFormData({
-          company: '',
-          role: '',
-          location: '',
-          start_date: '',
-          end_date: '',
-          is_current: false,
-          bullets: [''],
-        })
+        setFormData({ school: '', degree: '', major: '', gpa: '', start_date: '', end_date: '', location: '' })
         setShowForm(false)
         fetchData()
       }
@@ -144,9 +108,9 @@ export default function ExperiencePage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this experience?')) return
+    if (!confirm('Delete this education entry?')) return
     try {
-      await fetch(`${apiUrl}/api/v1/experience/${id}`, {
+      await fetch(`${apiUrl}/api/v1/education/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       })
@@ -159,7 +123,7 @@ export default function ExperiencePage() {
   if (loading) {
     return (
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Experience</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Education</h1>
         <p className="text-gray-600">Loading...</p>
       </div>
     )
@@ -168,9 +132,9 @@ export default function ExperiencePage() {
   if (profiles.length === 0) {
     return (
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Experience</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Education</h1>
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-          <p className="text-amber-800 mb-4">Create a profile first before adding experience.</p>
+          <p className="text-amber-800 mb-4">Create a profile first before adding education.</p>
           <Link href="/profile" className="text-violet-600 hover:underline font-medium">
             Go to Profile
           </Link>
@@ -181,7 +145,7 @@ export default function ExperiencePage() {
 
   return (
     <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Experience</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Education</h1>
 
       {profiles.length > 1 && (
         <div className="mb-6">
@@ -204,50 +168,51 @@ export default function ExperiencePage() {
           className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-700"
         >
           <Plus className="w-4 h-4" />
-          Add experience
+          Add education
         </button>
       ) : (
         <form onSubmit={handleSubmit} className="mb-8 bg-white shadow rounded-lg p-6 space-y-4">
-          <h2 className="text-lg font-semibold">New experience</h2>
+          <h2 className="text-lg font-semibold">New education</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Company *</label>
+              <label className="block text-sm font-medium text-gray-700">School *</label>
               <input
                 type="text"
-                value={formData.company}
-                onChange={(e) => setFormData((p) => ({ ...p, company: e.target.value }))}
+                value={formData.school}
+                onChange={(e) => setFormData((p) => ({ ...p, school: e.target.value }))}
                 required
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Role *</label>
+              <label className="block text-sm font-medium text-gray-700">Degree</label>
               <input
                 type="text"
-                value={formData.role}
-                onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
-                required
+                value={formData.degree}
+                onChange={(e) => setFormData((p) => ({ ...p, degree: e.target.value }))}
+                placeholder="e.g. B.S."
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Location</label>
+              <label className="block text-sm font-medium text-gray-700">Major</label>
               <input
                 type="text"
-                value={formData.location}
-                onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
+                value={formData.major}
+                onChange={(e) => setFormData((p) => ({ ...p, major: e.target.value }))}
+                placeholder="e.g. Computer Science"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">GPA</label>
               <input
-                type="checkbox"
-                id="is_current"
-                checked={formData.is_current}
-                onChange={(e) => setFormData((p) => ({ ...p, is_current: e.target.checked }))}
-                className="rounded border-gray-300"
+                type="text"
+                value={formData.gpa}
+                onChange={(e) => setFormData((p) => ({ ...p, gpa: e.target.value }))}
+                placeholder="e.g. 3.8"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
-              <label htmlFor="is_current" className="text-sm text-gray-700">Current role</label>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Start date</label>
@@ -264,46 +229,23 @@ export default function ExperiencePage() {
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData((p) => ({ ...p, end_date: e.target.value }))}
-                disabled={formData.is_current}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm disabled:opacity-50"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">Location</label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
             </div>
           </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Bullets (at least one required for resume)
-              </label>
-              <button type="button" onClick={addBullet} className="text-sm text-violet-600 hover:text-violet-700">
-                <Plus className="w-4 h-4 inline" /> Add
-              </button>
-            </div>
-            {formData.bullets.map((b, i) => (
-              <div key={i} className="flex gap-2 mt-2">
-                <input
-                  type="text"
-                  value={b}
-                  onChange={(e) => updateBullet(i, e.target.value)}
-                  placeholder="Describe an accomplishment or responsibility"
-                  className="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeBullet(i)}
-                  disabled={formData.bullets.length === 1}
-                  className="text-red-600 hover:text-red-700 disabled:opacity-40"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={saving || !formData.bullets.some((b) => b.trim())}
+              disabled={saving}
               className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
@@ -320,31 +262,29 @@ export default function ExperiencePage() {
       )}
 
       <div className="space-y-4">
-        {filteredExperiences.length === 0 ? (
+        {filteredEducations.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
-            No experience entries yet. Add your first one above.
+            No education entries yet. Add your first one above.
           </div>
         ) : (
-          filteredExperiences.map((exp) => (
-            <div key={exp.id} className="bg-white shadow rounded-lg p-6 flex justify-between items-start">
+          filteredEducations.map((edu) => (
+            <div key={edu.id} className="bg-white shadow rounded-lg p-6 flex justify-between items-start">
               <div>
-                <h3 className="font-semibold text-gray-900">{exp.company}</h3>
-                <p className="text-gray-600">{exp.role}</p>
-                {(exp.start_date || exp.end_date) && (
-                  <p className="text-sm text-gray-500">
-                    {exp.start_date} – {exp.is_current ? 'Present' : exp.end_date || 'Present'}
+                <h3 className="font-semibold text-gray-900">{edu.school}</h3>
+                {(edu.degree || edu.major) && (
+                  <p className="text-gray-600">
+                    {[edu.degree, edu.major].filter(Boolean).join(', ')}
+                    {edu.gpa && ` • GPA: ${edu.gpa}`}
                   </p>
                 )}
-                {(exp.experience_bullet?.length ?? 0) > 0 && (
-                  <ul className="mt-2 list-disc list-inside text-sm text-gray-600 space-y-1">
-                    {exp.experience_bullet!.map((b) => (
-                      <li key={b.id}>{b.bullet}</li>
-                    ))}
-                  </ul>
+                {(edu.start_date || edu.end_date) && (
+                  <p className="text-sm text-gray-500">
+                    {edu.start_date} – {edu.end_date || 'Present'}
+                  </p>
                 )}
               </div>
               <button
-                onClick={() => handleDelete(exp.id)}
+                onClick={() => handleDelete(edu.id)}
                 className="text-red-600 hover:text-red-700 p-1"
                 title="Delete"
               >

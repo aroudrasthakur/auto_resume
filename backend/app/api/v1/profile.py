@@ -1,6 +1,6 @@
 """Profile CRUD endpoints."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,6 +11,7 @@ from app.auth.dependencies import get_current_user
 from app.core.db import get_supabase_client
 from app.services.profile import ProfileService
 from shared.app.schemas.profile import (
+    ProfileCompletenessResponse,
     ProfileCreate,
     ProfileResponse,
     ProfileUpdate,
@@ -18,6 +19,19 @@ from shared.app.schemas.profile import (
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
+
+
+@router.get("/check", response_model=ProfileCompletenessResponse)
+@limiter.limit("100/minute")
+async def check_profile_completeness(
+    request: Request,
+    profile_id: Optional[UUID] = None,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Check if profile is complete for resume generation."""
+    service = ProfileService(supabase, current_user["user_id"])
+    return service.check_completeness(profile_id)
 
 
 @router.post("", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
