@@ -23,6 +23,17 @@ def _cognito_client():
     return boto3.client("cognito-idp", region_name=settings.COGNITO_REGION)
 
 
+def _secret_hash(username: str) -> str:
+    """Compute Cognito SecretHash for apps with client secret."""
+    msg = username + settings.COGNITO_CLIENT_ID
+    dig = hmac.new(
+        settings.COGNITO_CLIENT_SECRET.encode("utf-8"),
+        msg.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    return base64.b64encode(dig).decode("utf-8")
+
+
 def _build_auth_tokens(auth_result: dict):
     """Normalize Cognito AuthenticationResult into our token shape."""
     expires_in = auth_result.get("ExpiresIn", 3600)
@@ -80,6 +91,12 @@ class ConfirmForgotPasswordRequest(BaseModel):
     username: str = Field(..., description="Cognito username or email")
     confirmation_code: str = Field(..., min_length=6, max_length=6, alias="confirmationCode")
     new_password: str = Field(..., min_length=8, alias="newPassword")
+
+
+class ConfirmSignupRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    username: str = Field(..., description="Cognito username")
+    confirmation_code: str = Field(..., min_length=6, max_length=6, alias="confirmationCode")
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse, tags=["auth"])
@@ -176,13 +193,15 @@ def login(request: LoginRequest):
         return LoginResponse(**tokens)
     except ClientError as exc:
         code = exc.response["Error"].get("Code")
+        cognito_msg = exc.response["Error"].get("Message", "")
+        logger.warning("Cognito login error: %s - %s", code, cognito_msg)
         message_map = {
             "NotAuthorizedException": "Incorrect username or password.",
             "UserNotFoundException": "User not found.",
             "PasswordResetRequiredException": "Password reset required.",
             "UserNotConfirmedException": "User is not confirmed. Please verify your email.",
         }
-        detail = message_map.get(code, "Authentication failed.")
+        detail = message_map.get(code, cognito_msg or "Authentication failed.")
         raise HTTPException(status_code=401, detail=detail) from exc
     except Exception as exc:  # pragma: no cover
         logger.exception("Login failed: %s", exc)
@@ -222,6 +241,7 @@ def signup(request: SignupRequest):
             {"Name": "family_name", "Value": request.last_name},
             {"Name": "nickname", "Value": request.nickname},
             {"Name": "birthdate", "Value": request.birthdate},
+            {"Name": "preferred_username", "Value": request.username},
         ],
     }
     if settings.COGNITO_CLIENT_SECRET:
@@ -255,3 +275,67 @@ def signup(request: SignupRequest):
                 "AWS credentials not configured. Set DEV_AUTH_BYPASS=true for local development."
             )
         raise HTTPException(status_code=500, detail=detail) from exc
+
+
+@router.post("/confirm-signup", response_model=SignupResponse, tags=["auth"])
+def confirm_signup(request: ConfirmSignupRequest):
+    """Confirm signup with the verification code sent to email."""
+    if settings.DEV_AUTH_BYPASS:
+        return SignupResponse(
+            user_sub="dev-user-123",
+            user_confirmed=True,
+            message="Account verified (dev mode).",
+        )
+    if not settings.COGNITO_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Auth not configured.")
+    client = _cognito_client()
+    confirm_kwargs: dict = {
+        "ClientId": settings.COGNITO_CLIENT_ID,
+        "Username": request.username.strip(),
+        "ConfirmationCode": request.confirmation_code.strip(),
+    }
+    if settings.COGNITO_CLIENT_SECRET:
+        confirm_kwargs["SecretHash"] = _secret_hash(request.username)
+    try:
+        client.confirm_sign_up(**confirm_kwargs)
+        return SignupResponse(
+            user_sub="",
+            user_confirmed=True,
+            message="Account verified. You can sign in now.",
+        )
+    except ClientError as exc:
+        code = exc.response["Error"].get("Code")
+        message_map = {
+            "CodeMismatchException": "Invalid or expired code. Request a new one.",
+            "ExpiredCodeException": "Code has expired. Request a new one.",
+            "UserNotFoundException": "User not found.",
+        }
+        detail = message_map.get(code, exc.response["Error"].get("Message", "Verification failed."))
+        raise HTTPException(status_code=400, detail=detail) from exc
+
+
+@router.post("/resend-signup-code", response_model=ForgotPasswordResponse, tags=["auth"])
+def resend_signup_code(request: ForgotPasswordRequest):
+    """Resend the signup verification code to the user's email."""
+    if settings.DEV_AUTH_BYPASS:
+        return ForgotPasswordResponse(message="Verification code sent (dev mode).")
+    if not settings.COGNITO_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Auth not configured.")
+    client = _cognito_client()
+    resend_kwargs: dict = {
+        "ClientId": settings.COGNITO_CLIENT_ID,
+        "Username": request.username.strip(),
+    }
+    if settings.COGNITO_CLIENT_SECRET:
+        resend_kwargs["SecretHash"] = _secret_hash(request.username)
+    try:
+        client.resend_confirmation_code(**resend_kwargs)
+        return ForgotPasswordResponse(message="Verification code sent. Check your email.")
+    except ClientError as exc:
+        code = exc.response["Error"].get("Code")
+        message_map = {
+            "LimitExceededException": "Too many attempts. Try again later.",
+            "UserNotFoundException": "User not found.",
+        }
+        detail = message_map.get(code, "Could not send code.")
+        raise HTTPException(status_code=400, detail=detail) from exc

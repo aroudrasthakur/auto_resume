@@ -61,7 +61,7 @@ export default function SignInPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const tokens = await loginWithCredentials({ usernameOrEmail: identifier.trim(), password })
+      const tokens = await loginWithCredentials(identifier.trim(), password)
       login(tokens)
       router.push('/dashboard')
     } catch (err: unknown) {
@@ -113,13 +113,13 @@ export default function SignInPage() {
             <form onSubmit={handleSubmit} className="space-y-4" ref={fieldsRef}>
               <FormField
                 id="identifier"
-                label="Username or Email"
+                label="Username"
                 type="text"
                 required
                 autoComplete="username"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="Enter your username or email"
+                placeholder="Use the username you signed up with"
               />
               <FormField
                 id="password"
