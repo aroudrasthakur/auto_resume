@@ -50,7 +50,10 @@ export default function SignInPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const tokens = await loginWithCredentials(identifier.trim(), password)
+      const tokens = await loginWithCredentials({
+        usernameOrEmail: identifier.trim(),
+        password,
+      })
       login(tokens)
       router.push('/dashboard')
     } catch (err: unknown) {
