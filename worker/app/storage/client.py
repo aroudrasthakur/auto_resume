@@ -4,7 +4,7 @@ from pathlib import Path
 
 from supabase import Client, create_client
 
-from app.core.config import settings, _use_local_storage
+from app.core.config import _use_local_storage, settings
 
 _supabase_client: Client | None = None
 _project_root = Path(__file__).resolve().parents[3]  # worker/app/storage -> project root
