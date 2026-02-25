@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, User, GraduationCap, Briefcase, Code2, Wrench } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
@@ -13,14 +13,25 @@ interface Profile {
   headline?: string
 }
 
+const SECTION_LINKS: Record<string, { href: string; label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  profile: { href: '/profile', label: 'Profile', icon: User },
+  contacts: { href: '/profile', label: 'Contacts', icon: User },
+  education: { href: '/education', label: 'Education', icon: GraduationCap },
+  experience: { href: '/experience', label: 'Experience', icon: Briefcase },
+  projects: { href: '/projects', label: 'Projects', icon: Code2 },
+  skills: { href: '/skills', label: 'Skills', icon: Wrench },
+}
+
 export default function GeneratePage() {
   const router = useRouter()
+  const invalidateDashboard = useInvalidateDashboardData()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [jobDescription, setJobDescription] = useState('')
   const [pageCount, setPageCount] = useState(1)
   const [loading, setLoading] = useState(false)
   const [loadingProfiles, setLoadingProfiles] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [missingSections, setMissingSections] = useState<string[] | null>(null)
 
   useEffect(() => {
     apiFetch<Profile[]>('/profiles').then((res) => {
@@ -39,6 +50,7 @@ export default function GeneratePage() {
     }
     setLoading(true)
     setError(null)
+    setMissingSections(null)
     const res = await apiFetch<{ generated_resume_id: string }>('/resumes/generate', {
       method: 'POST',
       body: JSON.stringify({
@@ -56,7 +68,13 @@ export default function GeneratePage() {
       router.push(`/resumes/${res.data.generated_resume_id}`)
       return
     }
-    setError(res.error ?? 'Failed to generate resume')
+    if (res.errorData?.code === 'PROFILE_INCOMPLETE' && res.errorData?.missing_sections?.length) {
+      setMissingSections(res.errorData.missing_sections)
+      setError(null)
+    } else {
+      setError(res.error ?? 'Failed to generate resume')
+      setMissingSections(null)
+    }
     setLoading(false)
   }
 
@@ -83,6 +101,40 @@ export default function GeneratePage() {
       {error && (
         <div className="rounded border border-red-500/50 bg-red-500/10 px-4 py-3 font-body text-sm text-red-400">
           {error}
+        </div>
+      )}
+
+      {missingSections && missingSections.length > 0 && (
+        <div className="rounded border border-amber-500/40 bg-amber-500/5 px-5 py-5">
+          <p className="font-body text-amber-200/90 mb-1">
+            Almost there — complete these sections to generate your resume:
+          </p>
+          <p className="font-body text-sm text-muted mb-4">
+            Add your information to the sections below so we can build a tailored resume for you.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {missingSections.map((key) => {
+              const section = SECTION_LINKS[key]
+              if (!section) return null
+              const Icon = section.icon
+              return (
+                <Link
+                  key={key}
+                  href={section.href}
+                  className="inline-flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-body text-sm font-medium text-amber-200/90 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15"
+                >
+                  <Icon className="h-4 w-4" />
+                  {section.label}
+                </Link>
+              )
+            })}
+          </div>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-flex font-body text-sm font-medium text-gold hover:underline"
+          >
+            ← Back to Dashboard
+          </Link>
         </div>
       )}
 

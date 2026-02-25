@@ -7,6 +7,7 @@ from celery import Task
 from shared.app.constants import GenerationStatus
 from supabase import Client, create_client
 
+from app.ai.ats_scorer import ai_output_to_text, compute_ats_score
 from app.ai.provider import get_ai_provider
 from app.celery_app import celery_app
 from app.core.config import settings
@@ -45,7 +46,8 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
         )
 
         if not result.data:
-            raise ValueError(f"Generated resume {generated_resume_id} not found")
+            # Record may have been deleted or task is stale; skip without raising
+            return {"status": "skipped", "generated_resume_id": generated_resume_id, "reason": "not_found"}
 
         gen_resume = result.data[0]
 
@@ -55,8 +57,8 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
 
         from shared.app.utils.compress import decompress_text, unpack_profile_snapshot
 
-        profile_snapshot = unpack_profile_snapshot(gen_resume["profile_snapshot"])
-        jd_text = decompress_text(gen_resume["jd_snapshot"])
+        profile_snapshot = unpack_profile_snapshot(gen_resume.get("profile_snapshot"))
+        jd_text = decompress_text(gen_resume.get("jd_snapshot") or "")
 
         ai_provider = get_ai_provider()
 
@@ -112,14 +114,24 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
             ]
         ).execute()
 
-        supabase.table("generated_resume").update(
-            {
-                "status": GenerationStatus.DONE,
-                "current_step": None,
-                "ai_output_json": json.dumps(ai_output),
-                "provider": ai_provider.get_provider_name(),
-            }
-        ).eq("id", generated_resume_id).execute()
+        _update_step(generated_resume_id, "CHECKING_ATS")
+        ats_result = compute_ats_score(
+            resume_text=ai_output_to_text(ai_output),
+            job_description=jd_text,
+        )
+        update_payload: Dict = {
+            "status": GenerationStatus.DONE,
+            "current_step": None,
+            "ai_output_json": json.dumps(ai_output),
+            "provider": ai_provider.get_provider_name(),
+        }
+        if ats_result:
+            update_payload["ats_score"] = ats_result.get("score")
+            update_payload["ats_feedback"] = ats_result.get("feedback") or None
+
+        supabase.table("generated_resume").update(update_payload).eq(
+            "id", generated_resume_id
+        ).execute()
 
         return {"status": "success", "generated_resume_id": generated_resume_id}
 

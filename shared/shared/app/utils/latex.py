@@ -18,11 +18,13 @@ def escape_latex(text: str) -> str:
     """
     if not text:
         return ""
+    text = str(text)
 
     # LaTeX special characters that need escaping
     # Order matters: escape backslash first
+    # Replace \ with / to avoid "Undefined control sequence" ({\char92}C -> \C)
     replacements = [
-        ("\\", r"\\textbackslash{}"),
+        ("\\", "/"),
         ("&", r"\&"),
         ("%", r"\%"),
         ("$", r"\$"),
@@ -30,8 +32,8 @@ def escape_latex(text: str) -> str:
         ("_", r"\_"),
         ("{", r"\{"),
         ("}", r"\}"),
-        ("~", r"\textasciitilde{}"),
-        ("^", r"\textasciicircum{}"),
+        ("~", r"{\char126}"),
+        ("^", r"{\char94}"),
     ]
 
     result = text

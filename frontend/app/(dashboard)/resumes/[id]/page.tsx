@@ -3,11 +3,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Download, Loader2, CheckCircle, AlertCircle, Clock, Trash2 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { Download, Loader2, CheckCircle, AlertCircle, Clock, Trash2, Target } from 'lucide-react';
+import { apiFetch, downloadFile, getAuthHeaders } from '@/lib/api';
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data';
 
-const ESTIMATED_SECONDS = 120; // ~2 min for AI generation
+const ESTIMATED_SECONDS = 60; // target sub-60s for AI generation
 const CIRCUMFERENCE = 2 * Math.PI * 45;
 
 const STEP_LABELS: Record<string, string> = {
@@ -16,6 +16,7 @@ const STEP_LABELS: Record<string, string> = {
   RENDERING_TEMPLATE: 'Rendering template...',
   COMPILING_PDF: 'Compiling PDF...',
   UPLOADING: 'Uploading...',
+  CHECKING_ATS: 'Checking ATS...',
 };
 
 function formatTime(seconds: number): string {
@@ -32,6 +33,10 @@ export default function ResumeStatusPage() {
   const [status, setStatus] = useState<any>(null);
   const [files, setFiles] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const previewBlobRef = useRef<string | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(ESTIMATED_SECONDS);
   const startTimeRef = useRef<number | null>(null);
 
@@ -41,16 +46,9 @@ export default function ResumeStatusPage() {
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/resumes/${resumeId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
+        const res = await apiFetch<{ status: string; current_step?: string; created_at?: string; failure_reason?: string; ats_score?: number; ats_feedback?: string }>(`/resumes/${resumeId}`);
+        if (res.ok && res.data) {
+          const data = res.data;
           setStatus(data);
 
           if (data.status === 'QUEUED' || data.status === 'RUNNING') {
@@ -60,17 +58,11 @@ export default function ResumeStatusPage() {
           }
 
           if (data.status === 'DONE') {
-            const filesResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/resumes/${resumeId}/files`,
-              {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-              }
-            );
-            if (filesResponse.ok) {
-              const filesData = await filesResponse.json();
-              setFiles(filesData);
+            setFilesLoading(true);
+            const filesRes = await apiFetch<{ id: string; type: string; download_url: string }[]>(`/resumes/${resumeId}/files`);
+            setFilesLoading(false);
+            if (filesRes.ok && Array.isArray(filesRes.data)) {
+              setFiles(filesRes.data);
             }
           } else if (data.status !== 'DONE' && data.status !== 'FAILED') {
             setTimeout(fetchStatus, 1500);
@@ -83,6 +75,37 @@ export default function ResumeStatusPage() {
 
     fetchStatus();
   }, [resumeId]);
+
+  // Fetch PDF as blob for preview when URL requires auth (local storage)
+  useEffect(() => {
+    if (status?.status !== 'DONE' || files.length === 0) return;
+    const pdfFile = files.find((f) => f.type === 'PDF');
+    if (!pdfFile?.download_url) return;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const isOurApi = pdfFile.download_url.startsWith(apiBase);
+    if (!isOurApi) return; // External URL (Supabase) works in iframe directly
+    const loadPreview = async () => {
+      try {
+        const res = await fetch(pdfFile.download_url, { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (previewBlobRef.current) URL.revokeObjectURL(previewBlobRef.current);
+        previewBlobRef.current = url;
+        setPreviewBlobUrl(url);
+      } catch {
+        /* ignore */
+      }
+    };
+    loadPreview();
+    return () => {
+      if (previewBlobRef.current) {
+        URL.revokeObjectURL(previewBlobRef.current);
+        previewBlobRef.current = null;
+      }
+      setPreviewBlobUrl(null);
+    };
+  }, [status?.status, files]);
 
   useEffect(() => {
     if (status?.status !== 'QUEUED' && status?.status !== 'RUNNING') return;
@@ -98,6 +121,43 @@ export default function ResumeStatusPage() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [status?.status]);
+
+  const fetchFilesIfNeeded = async (): Promise<{ id: string; type: string; download_url: string }[]> => {
+    if (files.length > 0) return files;
+    setFilesLoading(true);
+    const filesRes = await apiFetch<{ id: string; type: string; download_url: string }[]>(`/resumes/${resumeId}/files`);
+    setFilesLoading(false);
+    if (filesRes.ok && Array.isArray(filesRes.data)) {
+      setFiles(filesRes.data);
+      return filesRes.data;
+    }
+    return [];
+  };
+
+  const handleDownload = async (url?: string, filename?: string) => {
+    if (status?.status !== 'DONE') return;
+    let downloadUrl = url;
+    let downloadFilename = filename ?? 'resume.pdf';
+    if (!downloadUrl) {
+      const currentFiles = await fetchFilesIfNeeded();
+      if (currentFiles.length === 0) {
+        alert('Resume files are not available. The upload may have failed.');
+        return;
+      }
+      const pdfFile = currentFiles.find((f) => f.type === 'PDF');
+      downloadUrl = pdfFile?.download_url;
+      downloadFilename = 'resume.pdf';
+    }
+    if (!downloadUrl) return;
+    setDownloading(true);
+    try {
+      await downloadFile(downloadUrl, downloadFilename);
+    } catch (err) {
+      window.open(downloadUrl, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm('Delete this resume? This cannot be undone.')) return;
@@ -178,15 +238,29 @@ export default function ResumeStatusPage() {
       <div className="rounded border border-b1 bg-s1 p-6">
         {status ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {statusBadge()}
-              {status.created_at && (
-                <span
-                  className="font-mono text-xs text-muted2"
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {statusBadge()}
+                {status.created_at && (
+                  <span
+                    className="font-mono text-xs text-muted2"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  >
+                    {new Date(status.created_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {status.status === 'DONE' && (
+                <button
+                  type="button"
+                  onClick={() => handleDownload()}
+                  disabled={downloading || filesLoading}
+                  className="inline-flex items-center gap-1.5 rounded border border-gold/40 px-2.5 py-1.5 font-mono text-xs text-gold hover:bg-gold/10 transition-colors disabled:opacity-50 shrink-0"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {new Date(status.created_at).toLocaleString()}
-                </span>
+                  <Download className="w-3.5 h-3.5" />
+                  {downloading ? 'Downloading…' : filesLoading ? 'Loading…' : 'Download PDF'}
+                </button>
               )}
             </div>
 
@@ -242,40 +316,82 @@ export default function ResumeStatusPage() {
               </div>
             )}
 
+            {status.status === 'DONE' && (status.ats_score != null || status.ats_feedback) && (
+              <div className="mt-4 pt-4 border-t border-b1">
+                <h2 className="font-body font-medium text-text mb-2">ATS Score</h2>
+                <div className="flex flex-wrap items-center gap-3">
+                  {status.ats_score != null && (
+                    <div className="inline-flex items-center gap-2 rounded border border-gold/30 bg-gold/5 px-4 py-2">
+                      <Target className="w-4 h-4 text-gold" />
+                      <span className="font-heading text-xl text-gold" style={{ fontFamily: 'var(--font-heading)' }}>
+                        {status.ats_score}/100
+                      </span>
+                    </div>
+                  )}
+                  {status.ats_feedback && (
+                    <p className="font-body text-sm text-muted max-w-xl">{status.ats_feedback}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {status.status === 'DONE' && files.length > 0 && (
               <div className="mt-4 pt-4 border-t border-b1 space-y-4">
                 {(() => {
                   const pdfFile = files.find((f) => f.type === 'PDF');
+                  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                  const needsBlobPreview = pdfFile?.download_url?.startsWith(apiBase);
+                  const iframeSrc = needsBlobPreview ? previewBlobUrl : pdfFile?.download_url;
                   return (
-                    pdfFile?.download_url && (
-                      <div>
-                        <h2 className="font-body font-medium text-text mb-3">Preview</h2>
-                        <div className="rounded border border-b1 bg-white overflow-hidden">
-                          <iframe
-                            src={pdfFile.download_url}
-                            title="Resume preview"
-                            className="w-full min-h-[600px] aspect-[8.5/11]"
-                          />
+                    <>
+                      {pdfFile?.download_url && (
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(pdfFile.download_url, 'resume.pdf')}
+                            disabled={downloading}
+                            className="inline-flex items-center gap-1.5 rounded border border-gold/40 px-2.5 py-1.5 font-mono text-xs text-gold hover:bg-gold/10 transition-colors disabled:opacity-50"
+                            style={{ fontFamily: 'var(--font-mono)' }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            {downloading ? 'Downloading…' : 'This looks perfect!'}
+                          </button>
                         </div>
-                      </div>
-                    )
+                      )}
+                      {pdfFile?.download_url && (
+                        <div>
+                          <h2 className="font-body font-medium text-text mb-3">Preview</h2>
+                          <div className="rounded border border-b1 bg-white overflow-hidden">
+                            {iframeSrc ? (
+                              <iframe
+                                src={iframeSrc}
+                                title="Resume preview"
+                                className="w-full min-h-[600px] aspect-[8.5/11]"
+                              />
+                            ) : needsBlobPreview ? (
+                              <div className="flex min-h-[600px] items-center justify-center bg-b2 text-muted font-body text-sm">
+                                Loading preview…
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
                 <div>
-                  <h2 className="font-body font-medium text-text mb-3">Download</h2>
+                  <h2 className="font-body font-medium text-text mb-3">All files</h2>
                   <ul className="space-y-2">
                     {files.map((file) => (
                       <li key={file.id}>
-                        <a
-                          href={file.download_url}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(file.download_url, file.type === 'PDF' ? 'resume.pdf' : 'resume.tex')}
                           className="inline-flex items-center gap-2 font-body text-sm text-gold hover:text-gold/80 transition-colors"
                         >
                           <Download className="w-4 h-4" />
                           {file.type}
-                        </a>
+                        </button>
                       </li>
                     ))}
                   </ul>

@@ -1,3 +1,11 @@
+## AI Model (resume generation speed)
+
+Default model is `gpt-4o-mini` for sub-60s generation. For higher quality, set in `.env`:
+
+```
+OPENAI_MODEL=gpt-4o
+```
+
 ## LaTeX (for PDF resume generation)
 
 The worker compiles LaTeX to PDF. Install one of:
@@ -34,8 +42,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 cd worker
-celery -A app.celery_app worker --loglevel=info
+celery -A app.celery_app worker --loglevel=info --pool=solo
 ```
+
+Use `--pool=solo` on Windows (required; avoids `PermissionError: Access is denied`). On Linux/Mac you can omit it for multi-worker concurrency.
 
 4. **Frontend**
 
@@ -49,6 +59,31 @@ Access:
 - Frontend: http://localhost:3000
 - API: http://localhost:8000
 - API docs: http://localhost:8000/docs
+
+## Storage (resume uploads)
+
+**Option A – Local storage (no Supabase Storage needed)**
+
+Add to `.env`:
+
+```
+STORAGE_LOCAL_ENABLED=true
+STORAGE_LOCAL_DIR=./storage/generated-resumes
+```
+
+Local storage is **always disabled in production** (`ENVIRONMENT=production`), even if enabled in `.env`. Use a path relative to the project root or an absolute path. Restart both worker and backend after changing. Directories are created automatically on first upload.
+
+**Option B – Supabase Storage**
+
+If you see "Bucket not found", create the bucket:
+
+1. Supabase Dashboard → **Storage** → **Buckets**
+2. Click **New bucket**
+3. Name: `generated-resumes`
+4. Public: **Unchecked** (private)
+5. Click **Create bucket**
+
+See `docs/SUPABASE_SETUP.md` for storage policies.
 
 ## Database migrations
 

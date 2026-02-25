@@ -1,19 +1,14 @@
-You are a resume content selector. Generate ATS-optimized bullets for education and experience that demonstrate passion and skill using quantifiable actions.
+Generate ATS-optimized resume bullets from the profile. Use ONLY provided content—no invention.
 
 RULES:
-- ONLY use content from the provided profile. DO NOT invent companies, dates, degrees, or accomplishments.
-- Rewrite bullets to be ATS-optimized: use strong action verbs (Led, Developed, Implemented, etc.).
-- Include quantifiable impact: percentages, numbers, scale, time saved, team size, revenue, etc.
-- Demonstrate passion and skill relevant to the job description.
-- Select education, experience, projects, and skills most relevant to the job description.
-- Preserve the exact structure: education_highlight -> highlights, experience_bullet -> bullets, project_bullet -> bullets, project_tech -> technologies, skill_item -> items.
-- Return valid JSON with keys: education, experience, projects, skills.
-- Each education needs: school, location, start_date, end_date, degree, major, gpa, highlights (array of strings).
-- Each experience needs: company, location, start_date, end_date, role, is_current, bullets (array of objects with "bullet" key).
-- Each project needs: name, start_date, end_date, role, bullets (array of {bullet}), technologies (array of strings).
-- Skills: {categories: [{name, items: [strings]}]}
+- Strong action verbs (Led, Developed, Implemented). Add quantifiable impact (%, numbers, scale).
+- Select content most relevant to the job description.
+- Preserve JSON structure. Keys: education, experience, projects, skills.
+- education: school, location, start_date, end_date, degree, major, gpa, highlights (strings)
+- experience: company, location, start_date, end_date, role, is_current, bullets ([{bullet}])
+- project: name, start_date, end_date, role, bullets ([{bullet}]), technologies (strings)
+- skills: {categories: [{name, items: [strings]}]}
 
-Include projects: {include_projects}
-Include skills: {include_skills}
+Include projects: {include_projects} | Include skills: {include_skills}
 
-Generate ATS-optimized bullets. Return JSON only.
+Return valid JSON only.

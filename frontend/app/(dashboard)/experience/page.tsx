@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Briefcase, Plus, Trash2 } from 'lucide-react'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
+import { useDisplayUser } from '@/lib/use-display-user'
+import { apiFetch } from '@/lib/api'
 
 interface Profile {
   id: string
@@ -45,37 +47,37 @@ export default function ExperiencePage() {
   })
 
   const invalidateDashboard = useInvalidateDashboardData()
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  })
+  const { displayName } = useDisplayUser()
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [profilesRes, expRes] = await Promise.all([
-        fetch(`${apiUrl}/api/v1/profiles`, { headers: getAuthHeaders() }),
-        fetch(`${apiUrl}/api/v1/experience`, { headers: getAuthHeaders() }),
+        apiFetch<Profile[]>('/profiles'),
+        apiFetch<Experience[]>('/experience'),
       ])
-      if (profilesRes.ok) {
-        const p = await profilesRes.json()
-        setProfiles(p)
-        if (p.length > 0 && !selectedProfileId) setSelectedProfileId(p[0].id)
+      let profileList: Profile[] = profilesRes.ok && Array.isArray(profilesRes.data) ? profilesRes.data : []
+      if (profileList.length === 0) {
+        const createRes = await apiFetch<Profile>('/profiles', {
+          method: 'POST',
+          body: JSON.stringify({ name: displayName || 'Resume', contacts: [] }),
+        })
+        if (createRes.ok && createRes.data) {
+          profileList = [createRes.data]
+        }
       }
-      if (expRes.ok) {
-        const e = await expRes.json()
-        setExperiences(e)
-      }
+      setProfiles(profileList)
+      if (profileList.length > 0 && !selectedProfileId) setSelectedProfileId(profileList[0].id)
+      if (expRes.ok && Array.isArray(expRes.data)) setExperiences(expRes.data)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [displayName])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   useEffect(() => {
     if (profiles.length > 0 && !selectedProfileId) setSelectedProfileId(profiles[0].id)
@@ -103,9 +105,8 @@ export default function ExperiencePage() {
     if (!selectedProfileId) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/api/v1/experience`, {
+      const res = await apiFetch<Experience>('/experience', {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           profile_id: selectedProfileId,
           company: formData.company,
@@ -116,13 +117,12 @@ export default function ExperiencePage() {
           is_current: formData.is_current,
         }),
       })
-      if (res.ok) {
-        const created = await res.json()
+      if (res.ok && res.data) {
+        const created = res.data
         const bulletsToAdd = formData.bullets.filter((b) => b.trim())
         if (bulletsToAdd.length > 0) {
-          await fetch(`${apiUrl}/api/v1/experience/${created.id}/bullets`, {
+          await apiFetch(`/experience/${created.id}/bullets`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ bullets: bulletsToAdd }),
           })
         }
@@ -149,10 +149,7 @@ export default function ExperiencePage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this experience?')) return
     try {
-      await fetch(`${apiUrl}/api/v1/experience/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+      await apiFetch(`/experience/${id}`, { method: 'DELETE' })
       fetchData()
       invalidateDashboard()
     } catch (err) {
@@ -176,8 +173,11 @@ export default function ExperiencePage() {
         <Link href="/dashboard" className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold" style={{ fontFamily: 'var(--font-mono)' }}>← Dashboard</Link>
         <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Experience</h1>
         <div className="rounded border border-b1 bg-s1 p-6">
-          <p className="font-body text-muted mb-2">Create a profile first before adding experience.</p>
-          <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          <p className="font-body text-muted mb-2">Unable to set up your resume profile. Please try again or create one from the Profile page.</p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => { setLoading(true); fetchData(); }} className="font-body text-sm font-medium text-gold hover:underline">Retry</button>
+            <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          </div>
         </div>
       </div>
     )

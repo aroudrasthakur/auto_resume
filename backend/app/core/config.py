@@ -60,6 +60,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 100
     RATE_LIMIT_GENERATE_PER_HOUR: int = 10
 
+    # Storage: local fallback (disabled in production regardless of .env)
+    STORAGE_LOCAL_ENABLED: bool = False
+    STORAGE_LOCAL_DIR: str = ""
+
+    @field_validator("STORAGE_LOCAL_ENABLED", mode="before")
+    @classmethod
+    def parse_storage_local_enabled(cls, v):
+        if v is None or v == "":
+            return False
+        if isinstance(v, bool):
+            return v
+        return str(v).lower() in ("true", "1", "yes")
+
     model_config = SettingsConfigDict(
         extra="ignore",  # Ignore extra fields from .env (used by worker/frontend)
         case_sensitive=True,
@@ -80,3 +93,12 @@ if not settings.COGNITO_JWKS_URL and settings.COGNITO_USER_POOL_ID:
 # Validate production settings
 if settings.ENVIRONMENT == "production" and settings.DEV_AUTH_BYPASS:
     raise ValueError("DEV_AUTH_BYPASS cannot be True in production")
+
+
+def use_local_storage() -> bool:
+    """True only when local storage is enabled and not in production."""
+    if settings.ENVIRONMENT == "production":
+        return False
+    if not settings.STORAGE_LOCAL_ENABLED:
+        return False
+    return bool((settings.STORAGE_LOCAL_DIR or "").strip())

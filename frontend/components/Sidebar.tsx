@@ -61,7 +61,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   href={item.href}
                   onClick={onMobileClose}
                   className={`
-                    group/item flex items-center gap-3 rounded-r px-3 py-2.5 text-sm font-medium transition-colors
+                    group/item flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-all duration-200
+                    md:rounded md:group-hover/sb:rounded-r
                     ${isActive
                       ? 'border-l-2 border-[var(--gold)] bg-[rgba(232,213,176,0.06)]'
                       : 'border-l-2 border-transparent text-[var(--muted)] hover:bg-[var(--s2)] hover:text-[var(--text)]'
