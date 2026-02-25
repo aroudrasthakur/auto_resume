@@ -40,7 +40,7 @@ function CallbackContent() {
           router.push('/dashboard')
         }, 500)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Token exchange error:', err)
         setError('Failed to complete authentication. Please try again.')
         setStatus('error')

@@ -27,6 +27,9 @@ jobs:
         env:
           DEV_AUTH_BYPASS: 'true'
           DATABASE_URL: 'postgresql://test:test@localhost/test'
+          SUPABASE_URL: 'https://placeholder.supabase.co'
+          SUPABASE_ANON_KEY: 'placeholder-anon-key'
+          SUPABASE_SERVICE_KEY: 'placeholder-service-key'
         run: |
           cd backend
           poetry run pytest --cov=app --cov-report=xml --cov-report=html
@@ -48,13 +51,15 @@ jobs:
         uses: snok/install-poetry@v1
       - name: Install dependencies
         run: |
-          cd worker
-          poetry install --no-root
-          cd ../shared
+          cd shared
           poetry install
+          cd ../worker
+          poetry install --no-root
       - name: Run tests
         env:
           AI_PROVIDER: 'mock'
+          SUPABASE_URL: 'https://placeholder.supabase.co'
+          SUPABASE_SERVICE_KEY: 'placeholder-service-key'
         run: |
           cd worker
           poetry run pytest --cov=app --cov-report=xml --cov-report=html

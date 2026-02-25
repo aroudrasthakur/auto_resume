@@ -1,20 +1,19 @@
 """Resume generation endpoints."""
 
 import json
+from pathlib import Path
 from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from shared.app.schemas.resume_request import (
-    ResumeGenerateRequest,
-    ResumeGenerateResponse,
-)
+from fastapi.responses import FileResponse
+from shared.app.schemas.resume_request import ResumeGenerateRequest, ResumeGenerateResponse
 from shared.app.utils.compress import compress_text, pack_profile_snapshot
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.auth.dependencies import get_current_user
-from app.core.config import settings
+from app.core.config import settings, use_local_storage
 from app.core.db import get_supabase_client
 from app.services.profile import ProfileService
 
@@ -22,8 +21,9 @@ from app.services.profile import ProfileService
 try:
     from worker.app.celery_app import celery_app
 except ImportError:
-    # Fallback for when worker is not installed
     celery_app = None
+
+_project_root = Path(__file__).resolve().parents[4]
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -221,17 +221,66 @@ async def get_resume_files(
     )
 
     files = files_result.data or []
+    use_local = use_local_storage()
 
-    # Generate presigned URLs
     for file in files:
         storage_key = file["storage_key"]
-        # Generate presigned URL (valid for 1 hour)
-        url_result = supabase.storage.from_("generated-resumes").create_signed_url(
-            storage_key, 3600
-        )
-        file["download_url"] = url_result.get("signedURL")
+        if use_local:
+            # Local storage: return API URL to stream file
+            base = str(request.base_url).rstrip("/")
+            file["download_url"] = f"{base}/api/v1/resumes/{resume_id}/files/{file['id']}/download"
+        else:
+            url_result = supabase.storage.from_("generated-resumes").create_signed_url(
+                storage_key, 3600
+            )
+            file["download_url"] = url_result.get("signedURL")
 
     return files
+
+
+@router.get("/{resume_id}/files/{file_id}/download")
+@limiter.limit("100/minute")
+async def download_resume_file(
+    request: Request,
+    resume_id: UUID,
+    file_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Stream file from local storage (only when local storage is enabled)."""
+    if not use_local_storage():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    resume_result = (
+        supabase.table("generated_resume")
+        .select("*")
+        .eq("id", str(resume_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    if not resume_result.data:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    file_result = (
+        supabase.table("generated_file")
+        .select("*")
+        .eq("id", str(file_id))
+        .eq("generated_resume_id", str(resume_id))
+        .execute()
+    )
+    if not file_result.data:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    storage_key = file_result.data[0]["storage_key"]
+    local_dir = (settings.STORAGE_LOCAL_DIR or "").strip()
+    base = Path(local_dir)
+    if not base.is_absolute():
+        base = _project_root / base
+    local_path = base / Path(*storage_key.split("/"))
+    if not local_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    mime = file_result.data[0].get("mime_type", "application/octet-stream")
+    return FileResponse(local_path, media_type=mime, filename=local_path.name)
 
 
 @router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)

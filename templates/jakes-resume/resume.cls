@@ -44,8 +44,9 @@
 %-------------------------------------------------------------------------------
 
 \usepackage[left=0.5in,top=0.5in,right=0.5in,bottom=0.5in]{geometry}
+\usepackage{array}
 \usepackage{hyperref}
-\usepackage{fontawesome5}
+\usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage{titlesec}
 
@@ -65,17 +66,17 @@
 %                Custom commands
 %-------------------------------------------------------------------------------
 
-% Header with name and contact info
+% Header with name and contact info (plain LaTeX, no fontawesome for Tectonic/Windows compatibility)
 \newcommand{\resumeHeader}{
   \begin{center}
     {\Huge\bfseries\@name}\\[0.5em]
     \small
-    \ifx\@email\empty\else\faEnvelope\ \href{mailto:\@email}{\@email}\quad\fi
-    \ifx\@phone\empty\else\faPhone\ \@phone\quad\fi
-    \ifx\@location\empty\else\faMapMarker\ \@location\quad\fi
-    \ifx\@linkedin\empty\else\faLinkedin\ \href{https://linkedin.com/in/\@linkedin}{\@linkedin}\quad\fi
-    \ifx\@github\empty\else\faGithub\ \href{https://github.com/\@github}{\@github}\quad\fi
-    \ifx\@website\empty\else\faGlobe\ \href{\@website}{\@website}\fi
+    \ifx\@email\empty\else\href{mailto:\@email}{\@email}\quad\fi
+    \ifx\@phone\empty\else\@phone\quad\fi
+    \ifx\@location\empty\else\@location\quad\fi
+    \ifx\@linkedin\empty\else\href{https://linkedin.com/in/\@linkedin}{LinkedIn}\quad\fi
+    \ifx\@github\empty\else\href{https://github.com/\@github}{GitHub}\quad\fi
+    \ifx\@website\empty\else\href{\@website}{Website}\fi
   \end{center}
   \vspace{-10pt}
 }

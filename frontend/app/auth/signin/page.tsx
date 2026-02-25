@@ -25,7 +25,7 @@ export default function SignInPage() {
   const leftRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const fieldsRef = useRef<HTMLDivElement>(null)
+  const fieldsRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.push('/dashboard')

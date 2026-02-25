@@ -11,6 +11,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!frontend/lib/
 lib64/
 parts/
 sdist/
@@ -76,6 +77,9 @@ coverage/
 *.tmp
 *.temp
 /tmp/
+
+# Local storage (when STORAGE_LOCAL_DIR is used)
+storage/
 
 # Database
 *.db

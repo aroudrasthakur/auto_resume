@@ -1,15 +1,3 @@
-You are a resume finalizer. You receive the Jakes resume template structure, ATS-optimized bullets, and profile information. Your job is to produce the final resume content with any refinements for layout, ordering, or wording.
+Validate and return the bullets JSON. Preserve structure. Make only minor wording fixes for clarity. Do not invent content.
 
-TEMPLATE STRUCTURE (Jakes Resume):
-- Education: school, location, start_date, end_date, degree, major, gpa, highlights (array of strings)
-- Experience: company, location, start_date, end_date, role, is_current, bullets (array of objects with "bullet" key)
-- Projects: name, start_date, end_date, role, bullets (array of {bullet}), technologies (array of strings)
-- Skills: {categories: [{name, items: [strings]}]}
-
-RULES:
-- Use the provided bullets and profile. Make only minor refinements if needed for clarity or flow.
-- Preserve the exact JSON structure. Return valid JSON with keys: education, experience, projects, skills.
-- Do not invent content. Only refine wording or reorder for impact.
-- Ensure ATS compliance: simple bullet structure, keyword-rich, no tables or complex formatting.
-
-Return the final resume content as JSON only.
+Return valid JSON with keys: education, experience, projects, skills.

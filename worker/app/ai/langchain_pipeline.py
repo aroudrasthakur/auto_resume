@@ -22,23 +22,100 @@ def _get_llm() -> ChatOpenAI:
     api_key = settings.OPENAI_API_KEY
     if not api_key:
         raise ValueError("OPENAI_API_KEY is required")
+    model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
     return ChatOpenAI(
-        model="gpt-4o",
+        model=model,
         api_key=api_key,
-        temperature=0.3,
+        temperature=0.2,
     )
+
+
+_PROFILE_KEEP = {
+    "display_name",
+    "email",
+    "phone",
+    "location",
+    "linkedin_url",
+    "github_url",
+    "website_url",
+}
 
 
 def _transform_profile_to_flat(profile_snapshot: Dict) -> Dict:
     """
-    Transform profile snapshot from DB structure to a flatter format for prompts.
+    Transform profile snapshot to a flat format for prompts, trimming non-essential fields.
     """
+    profile = {
+        k: v for k, v in (profile_snapshot.get("profile") or {}).items() if k in _PROFILE_KEEP
+    }
+    education = []
+    for edu in profile_snapshot.get("education", []):
+        hl = edu.get("education_highlight", edu.get("highlights", []))
+        education.append(
+            {
+                "school": edu.get("school"),
+                "location": edu.get("location"),
+                "start_date": edu.get("start_date"),
+                "end_date": edu.get("end_date"),
+                "degree": edu.get("degree"),
+                "major": edu.get("major"),
+                "gpa": edu.get("gpa"),
+                "highlights": [
+                    h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h)
+                    for h in hl
+                ],
+            }
+        )
+    experience = []
+    for exp in profile_snapshot.get("experience", []):
+        bullets = exp.get("experience_bullet", exp.get("bullets", []))
+        experience.append(
+            {
+                "company": exp.get("company"),
+                "location": exp.get("location"),
+                "start_date": exp.get("start_date"),
+                "end_date": exp.get("end_date"),
+                "role": exp.get("role"),
+                "is_current": exp.get("is_current"),
+                "bullets": [
+                    b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b)
+                    for b in bullets
+                ],
+            }
+        )
+    projects = []
+    for proj in profile_snapshot.get("projects", []):
+        projects.append(
+            {
+                "name": proj.get("name"),
+                "start_date": proj.get("start_date"),
+                "end_date": proj.get("end_date"),
+                "role": proj.get("role"),
+                "bullets": [
+                    b.get("bullet", str(b)) if isinstance(b, dict) else str(b)
+                    for b in proj.get("project_bullet", proj.get("bullets", []))
+                ],
+                "technologies": [
+                    t.get("tech", str(t)) if isinstance(t, dict) else str(t)
+                    for t in proj.get("project_tech", proj.get("technologies", []))
+                ],
+            }
+        )
+    skills = []
+    for cat in profile_snapshot.get("skills", []):
+        items = cat.get("skill_item", cat.get("items", []))
+        skills.append(
+            {
+                "name": cat.get("name", ""),
+                "items": [i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items],
+            }
+        )
     return {
-        "profile": profile_snapshot.get("profile", {}),
-        "education": profile_snapshot.get("education", []),
-        "experience": profile_snapshot.get("experience", []),
-        "projects": profile_snapshot.get("projects", []),
-        "skills": profile_snapshot.get("skills", []),
+        "profile": profile,
+        "education": education,
+        "experience": experience,
+        "projects": projects,
+        "skills": {"categories": skills},
     }
 
 
@@ -263,13 +340,14 @@ def run_pipeline(
         include_skills=include_skills,
     )
 
-    # Step 2: Finalize resume (template + bullets + profile)
+    # Step 2: Finalize resume (bullets + contact only; skip full profile to save tokens)
     _step("FINALIZING_RESUME")
     prompt2_text = load_prompt("resume_finalize")
+    contact_json = json.dumps(profile_flat.get("profile", {}), indent=2)
     step2_message = _build_step2_message(
         template_snippet=TEMPLATE_SNIPPET,
         bullets_json=json.dumps(step1_trimmed, indent=2),
-        profile_json=profile_json,
+        profile_json=contact_json,
         prompt_text=prompt2_text,
     )
     chain2 = llm | parser

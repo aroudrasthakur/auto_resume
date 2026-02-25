@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Wrench, Plus, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
+import { useDisplayUser } from '@/lib/use-display-user'
 
 interface Profile {
   id: string
@@ -37,23 +38,32 @@ export default function SkillsPage() {
   })
 
   const invalidateDashboard = useInvalidateDashboardData()
+  const { displayName } = useDisplayUser()
 
   const fetchData = useCallback(async () => {
     const [profilesRes, categoriesRes] = await Promise.all([
       apiFetch<Profile[]>('/profiles'),
       apiFetch<SkillCategory[]>('/skills/categories'),
     ])
-    if (profilesRes.ok && Array.isArray(profilesRes.data)) {
-      setProfiles(profilesRes.data)
-      if (profilesRes.data.length > 0 && !selectedProfileId) {
-        setSelectedProfileId(profilesRes.data[0].id)
+    let profileList: Profile[] = profilesRes.ok && Array.isArray(profilesRes.data) ? profilesRes.data : []
+    if (profileList.length === 0) {
+      const createRes = await apiFetch<Profile>('/profiles', {
+        method: 'POST',
+        body: JSON.stringify({ name: displayName || 'Resume', contacts: [] }),
+      })
+      if (createRes.ok && createRes.data) {
+        profileList = [createRes.data]
       }
+    }
+    setProfiles(profileList)
+    if (profileList.length > 0) {
+      setSelectedProfileId((prev) => prev || profileList[0].id)
     }
     if (categoriesRes.ok && Array.isArray(categoriesRes.data)) {
       setCategories(categoriesRes.data)
     }
     setLoading(false)
-  }, [selectedProfileId])
+  }, [displayName])
 
   useEffect(() => {
     fetchData()
@@ -137,8 +147,11 @@ export default function SkillsPage() {
         <Link href="/dashboard" className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold" style={{ fontFamily: 'var(--font-mono)' }}>← Dashboard</Link>
         <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Skills</h1>
         <div className="rounded border border-b1 bg-s1 p-6">
-          <p className="font-body text-muted mb-2">Create a profile first before adding skills.</p>
-          <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          <p className="font-body text-muted mb-2">Unable to set up your resume profile. Please try again or create one from the Profile page.</p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => { setLoading(true); fetchData(); }} className="font-body text-sm font-medium text-gold hover:underline">Retry</button>
+            <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          </div>
         </div>
       </div>
     )

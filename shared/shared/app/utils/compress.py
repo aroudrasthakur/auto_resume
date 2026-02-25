@@ -28,6 +28,8 @@ def compress_text(text: str) -> str:
 
 def decompress_text(stored: str) -> str:
     """Decompress gz64:base64 text or return as-is if not compressed."""
+    if not stored:
+        return ""
     if stored.startswith("gz64:"):
         compressed = base64.b64decode(stored[5:].encode("ascii"))
         return gzip.decompress(compressed).decode("utf-8")
@@ -42,6 +44,8 @@ def pack_profile_snapshot(obj: Dict[str, Any]) -> str:
 
 def unpack_profile_snapshot(stored: Any) -> Dict[str, Any]:
     """Unpack profile snapshot from storage. Handles both compressed and legacy."""
+    if stored is None:
+        return {}
     if isinstance(stored, str):
         data = json.loads(stored)
     else:

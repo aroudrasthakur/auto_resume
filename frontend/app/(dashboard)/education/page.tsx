@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { GraduationCap, Plus, Trash2 } from 'lucide-react'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
+import { useDisplayUser } from '@/lib/use-display-user'
+import { apiFetch } from '@/lib/api'
 
 interface Profile {
   id: string
@@ -47,37 +49,37 @@ export default function EducationPage() {
   })
 
   const invalidateDashboard = useInvalidateDashboardData()
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  })
+  const { displayName } = useDisplayUser()
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [profilesRes, eduRes] = await Promise.all([
-        fetch(`${apiUrl}/api/v1/profiles`, { headers: getAuthHeaders() }),
-        fetch(`${apiUrl}/api/v1/education`, { headers: getAuthHeaders() }),
+        apiFetch<Profile[]>('/profiles'),
+        apiFetch<Education[]>('/education'),
       ])
-      if (profilesRes.ok) {
-        const p = await profilesRes.json()
-        setProfiles(p)
-        if (p.length > 0 && !selectedProfileId) setSelectedProfileId(p[0].id)
+      let profileList: Profile[] = profilesRes.ok && Array.isArray(profilesRes.data) ? profilesRes.data : []
+      if (profileList.length === 0) {
+        const createRes = await apiFetch<Profile>('/profiles', {
+          method: 'POST',
+          body: JSON.stringify({ name: displayName || 'Resume', contacts: [] }),
+        })
+        if (createRes.ok && createRes.data) {
+          profileList = [createRes.data]
+        }
       }
-      if (eduRes.ok) {
-        const e = await eduRes.json()
-        setEducations(e)
-      }
+      setProfiles(profileList)
+      if (profileList.length > 0 && !selectedProfileId) setSelectedProfileId(profileList[0].id)
+      if (eduRes.ok && Array.isArray(eduRes.data)) setEducations(eduRes.data)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [displayName])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   useEffect(() => {
     if (profiles.length > 0 && !selectedProfileId) setSelectedProfileId(profiles[0].id)
@@ -105,9 +107,8 @@ export default function EducationPage() {
     if (!selectedProfileId) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/api/v1/education`, {
+      const res = await apiFetch<Education>('/education', {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           profile_id: selectedProfileId,
           school: formData.school,
@@ -119,13 +120,12 @@ export default function EducationPage() {
           end_date: formData.end_date || undefined,
         }),
       })
-      if (res.ok) {
-        const created = await res.json()
+      if (res.ok && res.data) {
+        const created = res.data
         const highlightsToAdd = formData.highlights.filter((h) => h.trim())
         if (highlightsToAdd.length > 0) {
-          await fetch(`${apiUrl}/api/v1/education/${created.id}/highlights`, {
+          await apiFetch(`/education/${created.id}/highlights`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ highlights: highlightsToAdd }),
           })
         }
@@ -153,10 +153,7 @@ export default function EducationPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this education entry?')) return
     try {
-      await fetch(`${apiUrl}/api/v1/education/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+      await apiFetch(`/education/${id}`, { method: 'DELETE' })
       fetchData()
       invalidateDashboard()
     } catch (err) {
@@ -180,8 +177,13 @@ export default function EducationPage() {
         <Link href="/dashboard" className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold" style={{ fontFamily: 'var(--font-mono)' }}>← Dashboard</Link>
         <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Education</h1>
         <div className="rounded border border-b1 bg-s1 p-6">
-          <p className="font-body text-muted mb-2">Create a profile first before adding education.</p>
-          <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          <p className="font-body text-muted mb-2">Unable to set up your resume profile. Please try again or create one from the Profile page.</p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => { setLoading(true); fetchData(); }} className="font-body text-sm font-medium text-gold hover:underline">
+              Retry
+            </button>
+            <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
+          </div>
         </div>
       </div>
     )

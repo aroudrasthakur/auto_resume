@@ -2,16 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import (
-    auth,
-    education,
-    experience,
-    job_description,
-    profile,
-    project,
-    resume,
-    skill,
-)
+from app.api.v1 import auth, education, experience, job_description, profile, project, resume, skill
 
 api_router = APIRouter()
 

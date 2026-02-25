@@ -28,9 +28,10 @@ type DashboardRightPanelProps = {
 }
 
 export default function DashboardRightPanel({ onClose }: DashboardRightPanelProps) {
-  const { completeness } = useDashboardData()
+  const { completeness, isLoading } = useDashboardData()
   const missing = completeness?.missing_sections ?? []
-  const isComplete = (key: string) => !missing.includes(key)
+  const isComplete = (key: string) =>
+    !isLoading && (key === 'resumes' || !missing.includes(key))
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-s1">
