@@ -226,7 +226,7 @@ export default function ProfilePage() {
             headline: updated.headline || '',
             summary: updated.summary || '',
             location: updated.location || '',
-            contacts: (updated.contacts || []).map((c) => ({
+            contacts: (updated.contacts || []).map((c: { contact_kind: string; label?: string; value: string }) => ({
               contact_kind: c.contact_kind,
               label: c.label,
               value: c.value,
@@ -251,7 +251,7 @@ export default function ProfilePage() {
             headline: created.headline || '',
             summary: created.summary || '',
             location: created.location || '',
-            contacts: (created.contacts || []).map((c) => ({
+            contacts: (created.contacts || []).map((c: { contact_kind: string; label?: string; value: string }) => ({
               contact_kind: c.contact_kind,
               label: c.label,
               value: c.value,

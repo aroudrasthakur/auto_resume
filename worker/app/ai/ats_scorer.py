@@ -19,25 +19,25 @@ def ai_output_to_text(ai_output: Dict[str, Any]) -> str:
             parts.append(edu.get("degree", ""))
             parts.append(edu.get("major", ""))
             for h in edu.get("highlights", []):
-                parts.append(h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h))
+                parts.append((h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h)))
     for exp in ai_output.get("experience") or []:
         if isinstance(exp, dict):
             parts.append(exp.get("company", ""))
             parts.append(exp.get("role", ""))
             for b in exp.get("bullets", []):
-                parts.append(b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b))
+                parts.append((b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b)))
     for proj in ai_output.get("projects") or []:
         if isinstance(proj, dict):
             parts.append(proj.get("name", ""))
             for b in proj.get("bullets", []):
-                parts.append(b.get("bullet", str(b))) if isinstance(b, dict) else str(b))
+                parts.append((b.get("bullet", str(b)) if isinstance(b, dict) else str(b)))
     skills_raw = ai_output.get("skills") or {}
     cats = skills_raw.get("categories", skills_raw) if isinstance(skills_raw, dict) else skills_raw
     for cat in cats or []:
         if isinstance(cat, dict):
             parts.append(cat.get("name", ""))
             for i in cat.get("items", []):
-                parts.append(i.get("item", str(i))) if isinstance(i, dict) else str(i))
+                parts.append((i.get("item", str(i)) if isinstance(i, dict) else str(i)))
     return " ".join(str(p).strip() for p in parts if p).strip()
 
 

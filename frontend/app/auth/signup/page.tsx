@@ -42,7 +42,7 @@ export default function SignUpPage() {
   const leftRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const fieldsRef = useRef<HTMLDivElement>(null)
+  const fieldsRef = useRef<HTMLFormElement>(null)
 
   const startResendTimer = useCallback(() => {
     setTimerSecs(60)

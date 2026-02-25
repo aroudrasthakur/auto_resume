@@ -103,7 +103,9 @@ class ConfirmSignupRequest(BaseModel):
 def forgot_password(request: ForgotPasswordRequest):
     """Send password reset code to the user's email via Cognito."""
     if settings.DEV_AUTH_BYPASS:
-        return ForgotPasswordResponse(message="If this account existed, a reset code would have been sent (dev mode).")
+        return ForgotPasswordResponse(
+            message="If this account existed, a reset code would have been sent (dev mode)."
+        )
     client = _cognito_client()
     try:
         client.forgot_password(
@@ -138,7 +140,9 @@ def confirm_forgot_password(request: ConfirmForgotPasswordRequest):
             ConfirmationCode=request.confirmation_code.strip(),
             Password=request.new_password,
         )
-        return ForgotPasswordResponse(message="Password has been reset. You can sign in with your new password.")
+        return ForgotPasswordResponse(
+            message="Password has been reset. You can sign in with your new password."
+        )
     except ClientError as exc:
         code = exc.response["Error"].get("Code")
         message_map = {
@@ -251,9 +255,11 @@ def signup(request: SignupRequest):
         return SignupResponse(
             user_sub=resp.get("UserSub"),
             user_confirmed=resp.get("UserConfirmed", False),
-            message="Signup successful. Please check your email to verify your account."
-            if not resp.get("UserConfirmed")
-            else "Signup successful.",
+            message=(
+                "Signup successful. Please check your email to verify your account."
+                if not resp.get("UserConfirmed")
+                else "Signup successful."
+            ),
         )
     except ClientError as exc:
         code = exc.response["Error"].get("Code")
@@ -270,7 +276,10 @@ def signup(request: SignupRequest):
         raise HTTPException(status_code=status, detail=detail) from exc
     except ParamValidationError as exc:  # pragma: no cover
         logger.warning("Cognito signup param validation: %s", exc)
-        raise HTTPException(status_code=400, detail="Invalid signup data (e.g. date format). Use YYYY-MM-DD for birthdate.") from exc
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid signup data (e.g. date format). Use YYYY-MM-DD for birthdate.",
+        ) from exc
     except Exception as exc:  # pragma: no cover
         logger.exception("Signup failed: %s", exc)
         detail = "Signup failed."

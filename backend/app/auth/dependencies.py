@@ -17,7 +17,9 @@ security = HTTPBearer(auto_error=False)
 DEV_USER_ID = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
 
 
-def _ensure_app_user(supabase, user_id: str, email: Optional[str] = None, cognito_username: Optional[str] = None):
+def _ensure_app_user(
+    supabase, user_id: str, email: Optional[str] = None, cognito_username: Optional[str] = None
+):
     """Upsert user into app_user so profile/experience FKs are satisfied."""
     try:
         supabase.table("app_user").upsert(
@@ -44,7 +46,9 @@ async def get_current_user(
     so the API can load data from Supabase for local/incognito use.
     """
     if settings.DEV_AUTH_BYPASS and not credentials:
-        _ensure_app_user(supabase, DEV_USER_ID, email="dev@example.com", cognito_username="dev-user")
+        _ensure_app_user(
+            supabase, DEV_USER_ID, email="dev@example.com", cognito_username="dev-user"
+        )
         return {
             "user_id": DEV_USER_ID,
             "email": "dev@example.com",

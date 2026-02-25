@@ -32,7 +32,7 @@ function CallbackContent() {
 
     // Exchange code for tokens
     exchangeCodeForTokens(code)
-      .then((tokens) => {
+      .then((tokens: { access_token: string; refresh_token?: string }) => {
         login(tokens)
         setStatus('success')
         // Brief delay to show success state
@@ -40,7 +40,7 @@ function CallbackContent() {
           router.push('/dashboard')
         }, 500)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Token exchange error:', err)
         setError('Failed to complete authentication. Please try again.')
         setStatus('error')

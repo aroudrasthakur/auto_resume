@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Sparkles, Loader2, User, GraduationCap, Briefcase, Code2, Wrench } from 'lucide-react'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, type ApiResult } from '@/lib/api'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
@@ -34,7 +34,7 @@ export default function GeneratePage() {
   const [missingSections, setMissingSections] = useState<string[] | null>(null)
 
   useEffect(() => {
-    apiFetch<Profile[]>('/profiles').then((res) => {
+    apiFetch<Profile[]>('/profiles').then((res: ApiResult<Profile[]>) => {
       if (res.ok && res.data && Array.isArray(res.data)) setProfiles(res.data)
       setLoadingProfiles(false)
     })
