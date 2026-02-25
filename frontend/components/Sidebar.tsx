@@ -7,8 +7,9 @@ import {
   User,
   Briefcase,
   GraduationCap,
-  FileText,
   FileStack,
+  Code2,
+  Wrench,
   LogOut,
   X,
 } from 'lucide-react'
@@ -18,10 +19,11 @@ import { useDisplayUser } from '@/lib/use-display-user'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: User },
-  { name: 'Experience', href: '/experience', icon: Briefcase },
   { name: 'Education', href: '/education', icon: GraduationCap },
+  { name: 'Experience', href: '/experience', icon: Briefcase },
+  { name: 'Projects', href: '/projects', icon: Code2 },
+  { name: 'Skills', href: '/skills', icon: Wrench },
   { name: 'Resumes', href: '/resumes', icon: FileStack },
-  { name: 'Generate Resume', href: '/generate', icon: FileText },
 ]
 
 type SidebarProps = {
@@ -32,7 +34,7 @@ type SidebarProps = {
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const { logout } = useAuth()
-  const { displayName, initial } = useDisplayUser()
+  const { username, fullName, initial } = useDisplayUser()
 
   const navContent = (
     <>
@@ -103,8 +105,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             >
               {initial}
             </div>
-            <span className="truncate font-body text-sm font-medium text-[var(--text)] max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-hover/sb:max-w-[120px] group-hover/sb:opacity-100">
-              {displayName}
+            <span className="flex flex-col truncate font-body text-sm font-medium text-[var(--text)] max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 group-hover/sb:max-w-[120px] group-hover/sb:opacity-100">
+              {username ? `@${username}` : initial}
+              {fullName && <span className="text-xs font-normal text-muted truncate">{fullName}</span>}
             </span>
           </Link>
           <button
@@ -212,8 +215,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     <div className="h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-lt)] flex items-center justify-center text-sm font-semibold text-[var(--bg)]">
                       {initial}
                     </div>
-                    <span className="truncate text-sm font-medium text-[var(--text)]">
-                      {displayName}
+                    <span className="flex flex-col truncate text-sm font-medium text-[var(--text)]">
+                      {username ? `@${username}` : initial}
+                      {fullName && <span className="text-xs font-normal text-muted truncate">{fullName}</span>}
                     </span>
                   </Link>
                   <button

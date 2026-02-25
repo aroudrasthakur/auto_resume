@@ -1,102 +1,57 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { User, Briefcase, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { User, Briefcase, GraduationCap, Code2, Wrench } from 'lucide-react'
 import StatHero from '@/components/StatHero'
 import ProgressRing from '@/components/ProgressRing'
 import ActionCard from '@/components/ActionCard'
 import { useDisplayUser } from '@/lib/use-display-user'
-import { apiFetch } from '@/lib/api'
+import { useDashboardData } from '@/lib/use-dashboard-data'
 
-interface ProfileCompleteness {
-  is_complete: boolean
-  missing_sections: string[]
-  profile_id?: string
-}
-
-const NEXT_STEPS = [
-  {
-    counter: '01',
-    title: 'Complete Your Profile',
-    description: 'Add your personal information and contact details.',
-    href: '/profile',
-    icon: User,
-  },
-  {
-    counter: '02',
-    title: 'Add Experience',
-    description: 'Add your work history and accomplishments.',
-    href: '/experience',
-    icon: Briefcase,
-  },
-  {
-    counter: '03',
-    title: 'Generate Resume',
-    description: 'Create an AI-tailored resume for a job posting.',
-    href: '/generate',
-    icon: Sparkles,
-  },
+const STEP_CONFIG = [
+  { key: 'profile', title: 'Complete Your Profile', description: 'Add your personal information and contact details.', href: '/profile', icon: User },
+  { key: 'education', title: 'Add Education', description: 'Add your degrees and academic background.', href: '/education', icon: GraduationCap },
+  { key: 'experience', title: 'Add Experience', description: 'Add your work history and accomplishments.', href: '/experience', icon: Briefcase },
+  { key: 'projects', title: 'Add Projects', description: 'Showcase your projects and technical work.', href: '/projects', icon: Code2 },
+  { key: 'skills', title: 'Add Skills', description: 'List your skills and expertise.', href: '/skills', icon: Wrench },
 ]
 
 export default function DashboardPage() {
   const [loaded, setLoaded] = useState(false)
-  const [completeness, setCompleteness] = useState<ProfileCompleteness | null>(null)
-  const [experiencesCount, setExperiencesCount] = useState(0)
-  const [resumesCount, setResumesCount] = useState(0)
-  const [skillsCount, setSkillsCount] = useState(0)
+  const {
+    completeness,
+    experiencesCount,
+    resumesCount,
+    isLoading: dataLoading,
+  } = useDashboardData()
   const { displayName } = useDisplayUser()
 
   useEffect(() => {
     setLoaded(true)
   }, [])
 
-  const fetchData = useCallback(async () => {
-    const [checkRes, expRes, resumesRes, skillsRes] = await Promise.all([
-      apiFetch<ProfileCompleteness>('/profiles/check'),
-      apiFetch<unknown[]>('/experience'),
-      apiFetch<unknown[]>('/resumes'),
-      apiFetch<unknown[]>('/skills/categories'),
-    ])
-
-    if (checkRes.ok && checkRes.data) {
-      setCompleteness(checkRes.data)
-    }
-    if (expRes.ok && Array.isArray(expRes.data)) {
-      setExperiencesCount(expRes.data.length)
-    }
-    if (resumesRes.ok && Array.isArray(resumesRes.data)) {
-      setResumesCount(resumesRes.data.length)
-    }
-    if (skillsRes.ok && Array.isArray(skillsRes.data)) {
-      setSkillsCount(skillsRes.data.length)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  useEffect(() => {
-    const onFocus = () => fetchData()
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [fetchData])
-
-  const missing = completeness?.missing_sections ?? []
+  const allMissing = ['profile', 'contacts', 'education', 'experience', 'projects', 'skills']
+  const missing = dataLoading || !completeness ? allMissing : completeness.missing_sections
   const hasPersonalInfo = !missing.includes('profile') && !missing.includes('contacts')
-  const hasExperience = !missing.includes('experience')
   const hasEducation = !missing.includes('education')
-  const hasSkills = skillsCount > 0
+  const hasExperience = !missing.includes('experience')
+  const hasProjects = !missing.includes('projects')
+  const hasSkills = !missing.includes('skills')
 
   const progressSteps = [
-    { label: 'Personal info', done: hasPersonalInfo },
-    { label: 'Work experience', done: hasExperience },
+    { label: 'Profile', done: hasPersonalInfo },
     { label: 'Education', done: hasEducation },
+    { label: 'Experience', done: hasExperience },
+    { label: 'Projects', done: hasProjects },
     { label: 'Skills', done: hasSkills },
   ]
 
   const doneCount = progressSteps.filter((s) => s.done).length
-  const completionPercent = progressSteps.length > 0 ? Math.round((doneCount / progressSteps.length) * 100) : 0
+  const completionPercent = dataLoading
+    ? null
+    : progressSteps.length > 0
+      ? Math.round((doneCount / progressSteps.length) * 100)
+      : 0
 
   return (
     <div
@@ -104,7 +59,7 @@ export default function DashboardPage() {
     >
       <div className="animate-fade-up delay-50">
         <h1 className="font-heading text-2xl text-text mb-1" style={{ fontFamily: 'var(--font-heading)' }}>
-          Welcome back{displayName !== 'User' ? `, ${displayName.split(' ')[0]}` : ''}
+          Welcome back{displayName ? `, ${displayName.split(' ')[0]}` : ''}
         </h1>
         <p className="font-body text-sm text-muted">
           Here&apos;s your resume builder overview.
@@ -112,14 +67,14 @@ export default function DashboardPage() {
       </div>
       <div className="animate-fade-up delay-50">
         <StatHero
-          profileStatus={completeness?.is_complete ? 'Complete' : 'Incomplete'}
+          profileStatus={dataLoading ? 'Loading...' : (completeness?.is_complete ? 'Complete' : 'Incomplete')}
           experiencesCount={experiencesCount}
           resumesCount={resumesCount}
         />
       </div>
 
       <div className="animate-fade-up delay-100">
-        <ProgressRing completion={completionPercent} steps={progressSteps} />
+        <ProgressRing completion={completionPercent} steps={progressSteps} isLoading={dataLoading} />
       </div>
 
       <section className="animate-fade-up delay-150">
@@ -137,19 +92,23 @@ export default function DashboardPage() {
           />
         </div>
         <div
-          className="grid grid-cols-1 gap-px overflow-hidden rounded border border-b1 bg-b1 md:grid-cols-3"
+          className="grid grid-cols-1 gap-px overflow-hidden rounded border border-b1 bg-b1 md:grid-cols-2 lg:grid-cols-3"
           style={{ borderRadius: '4px', borderColor: 'var(--b1)' }}
         >
-          {NEXT_STEPS.map((step) => (
-            <ActionCard
-              key={step.title}
-              counter={step.counter}
-              icon={step.icon}
-              title={step.title}
-              description={step.description}
-              href={step.href}
-            />
-          ))}
+          {STEP_CONFIG.map((step, idx) => {
+            const isDone = dataLoading ? false : !missing.includes(step.key)
+            return (
+              <ActionCard
+                key={step.key}
+                counter={String(idx + 1).padStart(2, '0')}
+                icon={step.icon}
+                title={step.title}
+                description={step.description}
+                href={step.href}
+                done={isDone}
+              />
+            )
+          })}
         </div>
       </section>
     </div>

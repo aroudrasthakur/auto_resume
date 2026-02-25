@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Briefcase, Plus, Trash2 } from 'lucide-react'
+import { Code2, Plus, Trash2 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
 import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
@@ -10,78 +11,64 @@ interface Profile {
   name: string
 }
 
-interface ExperienceBullet {
+interface ProjectBullet {
   id: string
   bullet: string
 }
 
-interface Experience {
+interface Project {
   id: string
   profile_id: string
-  company: string
-  role: string
-  location?: string
+  name: string
+  role?: string
   start_date?: string
   end_date?: string
-  is_current?: boolean
-  experience_bullet?: ExperienceBullet[]
+  project_bullet?: ProjectBullet[]
 }
 
-export default function ExperiencePage() {
+export default function ProjectsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [experiences, setExperiences] = useState<Experience[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    company: '',
+    name: '',
     role: '',
-    location: '',
     start_date: '',
     end_date: '',
-    is_current: false,
     bullets: [''] as string[],
   })
 
   const invalidateDashboard = useInvalidateDashboardData()
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  })
 
-  const fetchData = async () => {
-    try {
-      const [profilesRes, expRes] = await Promise.all([
-        fetch(`${apiUrl}/api/v1/profiles`, { headers: getAuthHeaders() }),
-        fetch(`${apiUrl}/api/v1/experience`, { headers: getAuthHeaders() }),
-      ])
-      if (profilesRes.ok) {
-        const p = await profilesRes.json()
-        setProfiles(p)
-        if (p.length > 0 && !selectedProfileId) setSelectedProfileId(p[0].id)
+  const fetchData = useCallback(async () => {
+    const [profilesRes, projectsRes] = await Promise.all([
+      apiFetch<Profile[]>('/profiles'),
+      apiFetch<Project[]>('/projects'),
+    ])
+    if (profilesRes.ok && Array.isArray(profilesRes.data)) {
+      setProfiles(profilesRes.data)
+      if (profilesRes.data.length > 0 && !selectedProfileId) {
+        setSelectedProfileId(profilesRes.data[0].id)
       }
-      if (expRes.ok) {
-        const e = await expRes.json()
-        setExperiences(e)
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
     }
-  }
+    if (projectsRes.ok && Array.isArray(projectsRes.data)) {
+      setProjects(projectsRes.data)
+    }
+    setLoading(false)
+  }, [selectedProfileId])
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [fetchData])
 
   useEffect(() => {
     if (profiles.length > 0 && !selectedProfileId) setSelectedProfileId(profiles[0].id)
   }, [profiles])
 
-  const filteredExperiences = experiences.filter((e) => e.profile_id === selectedProfileId)
+  const filteredProjects = projects.filter((p) => p.profile_id === selectedProfileId)
 
   const addBullet = () => {
     setFormData((p) => ({ ...p, bullets: [...p.bullets, ''] }))
@@ -103,38 +90,25 @@ export default function ExperiencePage() {
     if (!selectedProfileId) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/api/v1/experience`, {
+      const createRes = await apiFetch<Project>('/projects', {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           profile_id: selectedProfileId,
-          company: formData.company,
-          role: formData.role,
-          location: formData.location || undefined,
+          name: formData.name,
+          role: formData.role || undefined,
           start_date: formData.start_date || undefined,
-          end_date: formData.is_current ? undefined : formData.end_date || undefined,
-          is_current: formData.is_current,
+          end_date: formData.end_date || undefined,
         }),
       })
-      if (res.ok) {
-        const created = await res.json()
+      if (createRes.ok && createRes.data) {
         const bulletsToAdd = formData.bullets.filter((b) => b.trim())
         if (bulletsToAdd.length > 0) {
-          await fetch(`${apiUrl}/api/v1/experience/${created.id}/bullets`, {
+          await apiFetch(`/projects/${createRes.data.id}/bullets`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ bullets: bulletsToAdd }),
           })
         }
-        setFormData({
-          company: '',
-          role: '',
-          location: '',
-          start_date: '',
-          end_date: '',
-          is_current: false,
-          bullets: [''],
-        })
+        setFormData({ name: '', role: '', start_date: '', end_date: '', bullets: [''] })
         setShowForm(false)
         fetchData()
         invalidateDashboard()
@@ -147,16 +121,11 @@ export default function ExperiencePage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this experience?')) return
-    try {
-      await fetch(`${apiUrl}/api/v1/experience/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+    if (!confirm('Delete this project?')) return
+    const res = await apiFetch(`/projects/${id}`, { method: 'DELETE' })
+    if (res.ok) {
       fetchData()
       invalidateDashboard()
-    } catch (err) {
-      console.error(err)
     }
   }
 
@@ -164,7 +133,7 @@ export default function ExperiencePage() {
     return (
       <div className="flex flex-col gap-7 px-5 py-8 md:px-10 md:py-10">
         <Link href="/dashboard" className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold" style={{ fontFamily: 'var(--font-mono)' }}>← Dashboard</Link>
-        <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Experience</h1>
+        <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Projects</h1>
         <p className="font-body text-muted">Loading…</p>
       </div>
     )
@@ -174,9 +143,9 @@ export default function ExperiencePage() {
     return (
       <div className="flex flex-col gap-7 px-5 py-8 md:px-10 md:py-10">
         <Link href="/dashboard" className="inline-flex items-center gap-2 font-mono text-sm text-muted hover:text-gold" style={{ fontFamily: 'var(--font-mono)' }}>← Dashboard</Link>
-        <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Experience</h1>
+        <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Projects</h1>
         <div className="rounded border border-b1 bg-s1 p-6">
-          <p className="font-body text-muted mb-2">Create a profile first before adding experience.</p>
+          <p className="font-body text-muted mb-2">Create a profile first before adding projects.</p>
           <Link href="/profile" className="font-body text-sm font-medium text-gold hover:underline">Go to Profile</Link>
         </div>
       </div>
@@ -194,12 +163,12 @@ export default function ExperiencePage() {
             style={{ backgroundColor: 'var(--gold)', borderRadius: '3px' }}
           >
             <Plus className="w-4 h-4" />
-            Add experience
+            Add project
           </button>
         )}
       </div>
 
-      <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Experience</h1>
+      <h1 className="font-heading text-2xl text-text" style={{ fontFamily: 'var(--font-heading)' }}>Projects</h1>
 
       {profiles.length > 1 && (
         <div>
@@ -218,46 +187,27 @@ export default function ExperiencePage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded border border-b1 bg-s1 p-6 space-y-4">
-          <h2 className="font-heading text-lg text-text" style={{ fontFamily: 'var(--font-heading)' }}>New experience</h2>
+          <h2 className="font-heading text-lg text-text" style={{ fontFamily: 'var(--font-heading)' }}>New project</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Company *</label>
+              <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Project name *</label>
               <input
                 type="text"
-                value={formData.company}
-                onChange={(e) => setFormData((p) => ({ ...p, company: e.target.value }))}
+                value={formData.name}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 required
                 className="w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Role *</label>
+              <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Role</label>
               <input
                 type="text"
                 value={formData.role}
                 onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
-                required
+                placeholder="Your role"
                 className="w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none"
               />
-            </div>
-            <div>
-              <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Location</label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
-                className="w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_current"
-                checked={formData.is_current}
-                onChange={(e) => setFormData((p) => ({ ...p, is_current: e.target.checked }))}
-                className="rounded border-b2 text-gold focus:ring-gold"
-              />
-              <label htmlFor="is_current" className="font-body text-sm text-text">Current role</label>
             </div>
             <div>
               <label className="mb-1 block font-mono text-xs uppercase text-muted" style={{ fontFamily: 'var(--font-mono)' }}>Start date</label>
@@ -274,8 +224,7 @@ export default function ExperiencePage() {
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData((p) => ({ ...p, end_date: e.target.value }))}
-                disabled={formData.is_current}
-                className="w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text focus:border-gold focus:outline-none disabled:opacity-50"
+                className="w-full rounded border border-b1 bg-bg px-3 py-2 font-body text-text focus:border-gold focus:outline-none"
               />
             </div>
           </div>
@@ -293,7 +242,7 @@ export default function ExperiencePage() {
                   type="text"
                   value={b}
                   onChange={(e) => updateBullet(i, e.target.value)}
-                  placeholder="Accomplishment or responsibility"
+                  placeholder="Key accomplishment or responsibility"
                   className="flex-1 rounded border border-b1 bg-bg px-3 py-2 font-body text-text placeholder:text-muted focus:border-gold focus:outline-none"
                 />
                 <button type="button" onClick={() => removeBullet(i)} disabled={formData.bullets.length === 1} className="rounded p-2 text-muted hover:bg-s2 hover:text-red-400 disabled:opacity-40">
@@ -320,30 +269,30 @@ export default function ExperiencePage() {
       )}
 
       <div className="space-y-3">
-        {filteredExperiences.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <div className="rounded border border-b1 bg-s1 p-6 text-center font-body text-muted">
-            No experience entries yet. Add your first one above.
+            No projects yet. Add your first one above.
           </div>
         ) : (
-          filteredExperiences.map((exp) => (
-            <div key={exp.id} className="flex justify-between items-start gap-4 rounded border border-b1 bg-s1 p-4 hover:bg-s2 transition-colors">
+          filteredProjects.map((proj) => (
+            <div key={proj.id} className="flex justify-between items-start gap-4 rounded border border-b1 bg-s1 p-4 hover:bg-s2 transition-colors">
               <div className="min-w-0">
-                <h3 className="font-body font-semibold text-text">{exp.company}</h3>
-                <p className="font-body text-sm text-muted">{exp.role}</p>
-                {(exp.start_date || exp.end_date) && (
+                <h3 className="font-body font-semibold text-text">{proj.name}</h3>
+                {proj.role && <p className="font-body text-sm text-muted">{proj.role}</p>}
+                {(proj.start_date || proj.end_date) && (
                   <p className="font-mono mt-1 text-xs text-muted2" style={{ fontFamily: 'var(--font-mono)' }}>
-                    {exp.start_date} – {exp.is_current ? 'Present' : exp.end_date || '—'}
+                    {proj.start_date} – {proj.end_date || '—'}
                   </p>
                 )}
-                {(exp.experience_bullet?.length ?? 0) > 0 && (
+                {(proj.project_bullet?.length ?? 0) > 0 && (
                   <ul className="mt-2 list-disc list-inside font-body text-sm text-muted space-y-1">
-                    {exp.experience_bullet!.map((b) => (
+                    {proj.project_bullet!.map((b) => (
                       <li key={b.id}>{b.bullet}</li>
                     ))}
                   </ul>
                 )}
               </div>
-              <button onClick={() => handleDelete(exp.id)} className="shrink-0 rounded p-2 text-muted hover:bg-s2 hover:text-red-400" title="Delete">
+              <button onClick={() => handleDelete(proj.id)} className="shrink-0 rounded p-2 text-muted hover:bg-s2 hover:text-red-400" title="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

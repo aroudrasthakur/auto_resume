@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 
 const CIRCUMFERENCE = 283 // 2 * Math.PI * 45
 
 type Step = { label: string; done: boolean }
 
 type ProgressRingProps = {
-  completion: number
+  completion: number | null
   steps: Step[]
+  isLoading?: boolean
 }
 
-export default function ProgressRing({ completion, steps }: ProgressRingProps) {
+export default function ProgressRing({ completion, steps, isLoading = false }: ProgressRingProps) {
   const ringRef = useRef<SVGCircleElement>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -19,7 +21,35 @@ export default function ProgressRing({ completion, steps }: ProgressRingProps) {
     setMounted(true)
   }, [])
 
-  const offset = CIRCUMFERENCE - (completion / 100) * CIRCUMFERENCE
+  const percent = completion ?? 0
+  const offset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-8 md:flex-row md:items-center md:gap-8">
+        <div className="relative flex h-[100px] w-[100px] shrink-0 justify-center md:justify-start">
+          <div className="flex h-[100px] w-[100px] items-center justify-center rounded-full border-2 border-b2">
+            <Loader2 className="h-10 w-10 animate-spin text-gold" />
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2
+            className="font-heading text-2xl text-text md:text-[1.75rem]"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            Profile is{' '}
+            <em className="italic text-gold">in progress.</em>
+          </h2>
+          <p
+            className="mt-3 font-body text-muted leading-relaxed"
+            style={{ fontSize: '13px', lineHeight: 1.6 }}
+          >
+            Polishing your credentials for the spotlight…
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-8 md:flex-row md:items-center md:gap-8">
@@ -58,7 +88,7 @@ export default function ProgressRing({ completion, steps }: ProgressRingProps) {
             className="font-heading text-2xl text-gold"
             style={{ fontFamily: 'var(--font-heading)' }}
           >
-            {completion}%
+            {percent}%
           </span>
           <span
             className="font-mono text-[9px] uppercase tracking-wider text-muted"
@@ -75,8 +105,8 @@ export default function ProgressRing({ completion, steps }: ProgressRingProps) {
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           Profile is{' '}
-          <em className={`italic ${completion === 100 ? 'text-emerald-400' : 'text-gold'}`}>
-            {completion === 100 ? 'complete.' : completion > 0 ? 'in progress.' : 'empty.'}
+          <em className={`italic ${percent === 100 ? 'text-emerald-400' : 'text-gold'}`}>
+            {percent === 100 ? 'complete.' : percent > 0 ? 'in progress.' : 'empty.'}
           </em>
         </h2>
         <p

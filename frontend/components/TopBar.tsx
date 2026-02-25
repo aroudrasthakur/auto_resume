@@ -15,6 +15,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/profile')) return 'Profile'
   if (pathname.startsWith('/experience')) return 'Experience'
   if (pathname.startsWith('/education')) return 'Education'
+  if (pathname.startsWith('/projects')) return 'Projects'
+  if (pathname.startsWith('/skills')) return 'Skills'
   if (pathname.startsWith('/generate')) return 'Generate Resume'
   if (pathname === '/resumes') return 'Resumes'
   if (pathname.startsWith('/resumes/')) return 'Resume'

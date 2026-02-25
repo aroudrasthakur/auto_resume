@@ -63,7 +63,7 @@ class ProfileCompletenessResponse(BaseModel):
     is_complete: bool = Field(..., description="Whether profile is ready for resume generation")
     missing_sections: List[str] = Field(
         default_factory=list,
-        description="Sections that need to be filled: profile, contacts, experience, education",
+        description="Sections that need to be filled: profile, contacts, education, experience, projects, skills",
     )
     profile_id: Optional[str] = Field(
         None,

@@ -47,6 +47,49 @@ async def list_skill_categories(
     return result.data or []
 
 
+@router.post("/categories/{category_id}/items", status_code=status.HTTP_201_CREATED)
+@limiter.limit("100/minute")
+async def add_skill_items(
+    request: Request,
+    category_id: UUID,
+    items_data: dict,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase_client),
+):
+    """Add skill items to a category."""
+    cat_result = (
+        supabase.table("skill_category")
+        .select("id")
+        .eq("id", str(category_id))
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+    if not cat_result.data:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    items = items_data.get("items", [])
+    if not items:
+        return {"added": 0}
+
+    rows = []
+    for i, item_text in enumerate(items):
+        if item_text and str(item_text).strip():
+            rows.append(
+                {
+                    "category_id": str(category_id),
+                    "user_id": current_user["user_id"],
+                    "item": str(item_text).strip(),
+                    "sort_order": i,
+                }
+            )
+
+    if not rows:
+        return {"added": 0}
+
+    result = supabase.table("skill_item").insert(rows).execute()
+    return {"added": len(result.data or [])}
+
+
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("100/minute")
 async def delete_skill_category(
