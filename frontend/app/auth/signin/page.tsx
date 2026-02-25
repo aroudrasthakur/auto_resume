@@ -37,23 +37,12 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!leftRef.current || !formRef.current) return
-    gsap.fromTo(leftRef.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
-    gsap.fromTo(formRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
-    if (titleRef.current) {
-      gsap.fromTo(
-        titleRef.current,
-        { opacity: 0, y: 20, skewY: 2 },
-        { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' }
-      )
-    }
-    if (fieldsRef.current) {
-      const fields = fieldsRef.current.querySelectorAll('.field')
-      gsap.fromTo(
-        fields,
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, delay: 0.3, ease: 'power3.out' }
-      )
-    }
+    gsap.fromTo('.signin-left', { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
+    gsap.fromTo('.rp-card', { opacity: 0, y: 20, rotation: 0.5 }, { opacity: 1, y: 0, rotation: 0, duration: 0.9, delay: 0.4, ease: 'power3.out' })
+    gsap.to('.rp-card', { y: -6, duration: 3, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.5 })
+    gsap.fromTo('.signin-form', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
+    gsap.fromTo('.form-title', { opacity: 0, y: 20, skewY: 2 }, { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' })
+    gsap.fromTo('.field', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, delay: 0.3, ease: 'power3.out' })
   }, [isLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +50,10 @@ export default function SignInPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const tokens = await loginWithCredentials(identifier.trim(), password)
+      const tokens = await loginWithCredentials({
+        usernameOrEmail: identifier.trim(),
+        password,
+      })
       login(tokens)
       router.push('/dashboard')
     } catch (err: unknown) {
@@ -91,21 +83,36 @@ export default function SignInPage() {
           </div>
         </AuthLeftPanel>
         <div className="auth-right">
-          <div ref={formRef} className="auth-form-wrap">
-            <p
-              className="mb-1"
+          <div ref={formRef} className="auth-form-wrap signin-form">
+            <div
               style={{
-                fontFamily: 'var(--font-mono), monospace',
+                fontFamily: "'DM Mono', monospace",
                 fontSize: '9px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
-                color: 'var(--muted)',
+                color: '#c9a96e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '16px',
               }}
             >
-              Sign in
-            </p>
-            <h1 ref={titleRef} className="form-title font-heading text-text mb-1" style={{ fontSize: '36px' }}>
-              Good to have you <em className="text-gold not-italic">back.</em>
+              <span style={{ width: '20px', height: '1px', background: '#c9a96e', display: 'block' }} />
+              Sign In
+            </div>
+            <h1
+              ref={titleRef}
+              className="form-title"
+              style={{
+                fontFamily: "'DM Serif Display', serif",
+                fontSize: '36px',
+                letterSpacing: '-1.5px',
+                lineHeight: '1.05',
+                color: '#f0ede8',
+                marginBottom: '8px',
+              }}
+            >
+              Good to have you <em style={{ color: '#c9a96e', fontStyle: 'italic' }}>back.</em>
             </h1>
             <p className="text-muted mb-6" style={{ fontSize: '13px' }}>
               Enter your credentials to access your dashboard.

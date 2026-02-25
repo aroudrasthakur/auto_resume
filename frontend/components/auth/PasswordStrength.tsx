@@ -4,22 +4,27 @@ type PasswordStrengthProps = {
   password: string
 }
 
-function getStrength(password: string): { score: number; color: string } {
-  if (!password) return { score: 0, color: 'var(--b2)' }
+// Strong = only when all 4 criteria are met (length ≥8, upper, number, special)
+const LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong'] as const
+const COLORS = ['var(--b2)', 'var(--red)', 'var(--gold)', 'var(--green)', 'var(--green)'] as const
+
+function getStrength(password: string): { score: number; label: string; color: string } {
+  if (!password) return { score: 0, label: 'Weak', color: COLORS[1] }
   let score = 0
   if (password.length >= 8) score++
   if (/[A-Z]/.test(password)) score++
   if (/[0-9]/.test(password)) score++
   if (/[^A-Za-z0-9]/.test(password)) score++
-  const colors = ['var(--b2)', 'var(--red)', 'var(--gold)', 'var(--green)', 'var(--green)']
+  const s = Math.min(4, score)
   return {
-    score: Math.min(4, score),
-    color: colors[score] || 'var(--green)',
+    score: s,
+    label: LABELS[s] ?? '',
+    color: COLORS[s] ?? COLORS[0],
   }
 }
 
 export default function PasswordStrength({ password }: PasswordStrengthProps) {
-  const { score, color } = getStrength(password)
+  const { score, label, color } = getStrength(password)
   return (
     <div
       className="mt-1 flex items-center gap-2"
@@ -28,7 +33,6 @@ export default function PasswordStrength({ password }: PasswordStrengthProps) {
         fontSize: '9px',
         letterSpacing: '2px',
         textTransform: 'uppercase',
-        color: 'var(--muted)',
       }}
     >
       <div className="flex gap-0.5 flex-1" style={{ maxWidth: 72 }}>
@@ -42,7 +46,7 @@ export default function PasswordStrength({ password }: PasswordStrengthProps) {
           />
         ))}
       </div>
-      <span>STRENGTH</span>
+      <span style={{ color }}>{label}</span>
     </div>
   )
 }

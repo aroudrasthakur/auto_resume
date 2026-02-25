@@ -25,100 +25,91 @@ export default function SignUpLeft() {
 
   return (
     <div className="signup-left flex flex-col justify-between h-full min-h-0">
-      <div className="min-h-0 flex flex-col gap-0 shrink">
-        <p
-          className="mb-1"
-          style={{
-            fontFamily: 'var(--font-mono), monospace',
-            fontSize: '9px',
-            letterSpacing: '3px',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-          }}
-        >
-          <span className="inline-block w-6 h-px bg-gold mr-2 align-middle" style={{ marginRight: '8px' }} aria-hidden />
-          Create account
-        </p>
-        <h2
-          className="font-heading text-text leading-tight mb-1"
-          style={{
-            fontSize: 'clamp(24px, 3vw, 36px)',
-            letterSpacing: '-1px',
-            lineHeight: 1.1,
-            maxWidth: '320px',
-          }}
-        >
-          Start building résumés that get you <em className="text-gold not-italic">hired.</em>
-        </h2>
-        <p className="text-sm text-muted mb-4" style={{ maxWidth: '320px', lineHeight: 1.5, fontSize: '13px' }}>
-          Fill in your details once. Then paste any job description and let AI do the rest.
-        </p>
+      <div className="relative z-[1] flex flex-col justify-between h-full min-h-0">
+        <div className="min-h-0 shrink">
+          <div
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: '9px',
+              letterSpacing: '3px',
+              textTransform: 'uppercase',
+              color: '#c9a96e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '20px',
+            }}
+          >
+            <span style={{ width: '24px', height: '1px', background: '#c9a96e', display: 'block', flexShrink: 0 }} />
+            Create account
+          </div>
+          <h1
+            style={{
+              fontFamily: "'DM Serif Display', serif",
+              fontSize: 'clamp(36px, 4vw, 56px)',
+              letterSpacing: '-2px',
+              lineHeight: '1.0',
+              color: '#f0ede8',
+              marginBottom: '12px',
+              maxWidth: '320px',
+            }}
+          >
+            Start building résumés that get you <em style={{ color: '#c9a96e', fontStyle: 'italic' }}>hired.</em>
+          </h1>
+          <p style={{ fontSize: '14px', color: '#4a4a4a', lineHeight: 1.7, maxWidth: '320px', marginBottom: '24px' }}>
+            Fill in your details once. Then paste any job description and let AI do the rest.
+          </p>
 
-        <div className="space-y-0 step-tracker flex-shrink-0">
-          {steps.map((step, i) => (
-            <div
-              key={step.num}
-              ref={(el) => { rowRefs.current[i] = el }}
-              className="step-row-item py-2 px-3 rounded"
-              style={{
-                background: step.active ? 'rgba(201,169,110,0.06)' : 'transparent',
-                borderBottom: i < steps.length - 1 ? '1px solid var(--b1)' : 'none',
-              }}
-            >
-              <div className="flex items-start gap-3">
+          <div className="step-tracker flex-shrink-0" style={{ border: '1px solid #1a1a1a', borderRadius: '3px', overflow: 'hidden', background: '#0d0d0d' }}>
+            {steps.map((step, i) => (
+              <div
+                key={step.num}
+                ref={(el) => { rowRefs.current[i] = el }}
+                className="step-row-item"
+                style={{
+                  padding: '18px 20px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '14px',
+                  background: step.active ? 'rgba(201,169,110,0.06)' : 'transparent',
+                  borderBottom: i < steps.length - 1 ? '1px solid #1a1a1a' : 'none',
+                }}
+              >
                 <span
-                  className="font-heading italic shrink-0"
                   style={{
-                    fontSize: '16px',
-                    color: step.active ? 'var(--gold)' : 'var(--muted2)',
+                    fontFamily: "'DM Serif Display', serif",
+                    fontSize: '18px',
+                    fontStyle: 'italic',
+                    color: step.active ? '#c9a96e' : '#2e2e2e',
+                    flexShrink: 0,
                   }}
                 >
-                  {step.done ? (
-                    <span className="font-mono not-italic text-green">✓</span>
-                  ) : (
-                    step.num
-                  )}
+                  {step.done ? <span style={{ fontFamily: "'DM Mono', monospace", fontStyle: 'normal', color: '#4ade80' }}>✓</span> : step.num}
                 </span>
                 <div>
-                  <p
-                    className="font-medium"
-                    style={{
-                      color: step.active ? 'var(--text)' : 'var(--muted)',
-                      fontSize: '13px',
-                    }}
-                  >
-                    {step.title}
-                  </p>
-                  <p
-                    className="text-muted2"
-                    style={{
-                      fontFamily: 'var(--font-mono), monospace',
-                      fontSize: '8px',
-                      letterSpacing: '1px',
-                    }}
-                  >
-                    {step.desc}
-                  </p>
+                  <p style={{ color: step.active ? '#f0ede8' : '#4a4a4a', fontSize: '14px', fontWeight: 500, margin: 0 }}>{step.title}</p>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '9px', letterSpacing: '1px', color: '#2e2e2e', marginTop: '2px' }}>{step.desc}</p>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      <p
-        className="text-muted2 mt-3 flex-shrink-0"
-        style={{
-          fontFamily: 'var(--font-mono), monospace',
-          fontSize: '8px',
-          lineHeight: 1.5,
-          maxWidth: '280px',
-        }}
-      >
-        <span className="text-muted">Your data is encrypted and never shared.</span>
-        <br />
-        Built on AWS Cognito · Jake&apos;s Resume Template
-      </p>
+        <p
+          className="flex-shrink-0 mt-auto pt-4"
+          style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: '9px',
+            lineHeight: 1.6,
+            color: '#2e2e2e',
+            maxWidth: '280px',
+          }}
+        >
+          <span style={{ color: '#4a4a4a' }}>Your data is encrypted and never shared.</span>
+          <br />
+          Built on AWS Cognito · Jake&apos;s Resume Template
+        </p>
+      </div>
     </div>
   )
 }

@@ -75,7 +75,7 @@ export default function WaveCanvas() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 w-full h-full pointer-events-none z-0"
-      style={{ opacity: 0.5 }}
+      style={{ opacity: 0.45 }}
       aria-hidden
     />
   )

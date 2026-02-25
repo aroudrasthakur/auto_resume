@@ -63,6 +63,68 @@ body {
   background: hsl(var(--background));
 }
 
+/* Auth + Landing: force dark inputs (override browser/autofill) */
+.auth-page input,
+.auth-page textarea,
+.auth-page select {
+  background-color: #0d0d0d !important;
+  color: #f0ede8 !important;
+  border: 1px solid #252525 !important;
+  border-radius: 3px !important;
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: dark;
+}
+.auth-page input:-webkit-autofill,
+.auth-page input:-webkit-autofill:hover,
+.auth-page input:-webkit-autofill:focus,
+.auth-page input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0d0d0d inset !important;
+  -webkit-text-fill-color: #f0ede8 !important;
+  caret-color: #f0ede8;
+  border: 1px solid #252525 !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+.auth-page input:focus {
+  border-color: #c9a96e !important;
+  background-color: rgba(201, 169, 110, 0.03) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.auth-page input::placeholder {
+  color: #4a4a4a !important;
+  font-size: 13px;
+}
+
+/* Pulsing dot (left panel label) */
+@keyframes pd {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Custom cursor — hidden until first mousemove */
+.cursor-dot,
+.cursor-ring {
+  opacity: 0;
+  transition: opacity 0.3s, width 0.2s, height 0.2s;
+}
+.cursor-dot.visible,
+.cursor-ring.visible {
+  opacity: 1;
+}
+.cursor-ring {
+  border-color: rgba(201, 169, 110, 0.3) !important;
+}
+@media (pointer: coarse) {
+  .cursor-dot,
+  .cursor-ring {
+    display: none !important;
+  }
+  body {
+    cursor: auto !important;
+  }
+}
+
 /* Dashboard v2 animations */
 @keyframes fadeUp {
   from {
@@ -196,6 +258,10 @@ body {
   min-height: 0;
   overflow: hidden;
 }
+.auth-page .auth-layout > .auth-left-panel-wrap {
+  height: 100%;
+  align-self: stretch;
+}
 .auth-page .auth-right {
   display: flex;
   justify-content: center;
@@ -248,10 +314,10 @@ body {
   font-size: 13px;
 }
 .auth-page .auth-form-wrap-signup .signup-form .auth-btn-primary {
-  padding: 9px 12px;
-  font-size: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 24px;
 }
 .auth-page .auth-form-wrap-signup .signup-form .signup-form-fields + p,
 .auth-page .auth-form-wrap-signup .signup-form .auth-btn-primary + p {
@@ -306,8 +372,8 @@ body {
 /* Auth: left panel dot-grid background */
 .auth-page .auth-left-panel {
   position: relative;
-  background: var(--s1);
-  border-right: 1px solid var(--b1);
+  background: #0d0d0d;
+  border-right: 1px solid #1a1a1a;
   padding: 64px 72px;
   display: flex;
   flex-direction: column;
@@ -317,26 +383,38 @@ body {
 .auth-page .auth-left-panel.auth-left-panel-signup,
 .auth-page .auth-left-panel.auth-left-panel-signin {
   padding: 32px 40px 36px;
+  min-height: 100%;
 }
 .auth-page .auth-left-panel::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(var(--b1) 1px, transparent 1px),
-    linear-gradient(90deg, var(--b1) 1px, transparent 1px);
+    linear-gradient(#1a1a1a 1px, transparent 1px),
+    linear-gradient(90deg, #1a1a1a 1px, transparent 1px);
   background-size: 36px 36px;
   opacity: 0.5;
   pointer-events: none;
+  z-index: 0;
+}
+.auth-page .signin-left,
+.auth-page .signup-left {
+  position: relative;
+  overflow: hidden;
+}
+.auth-page .signin-left > *:not(.auth-left-dot-grid),
+.auth-page .signup-left > *:not(.auth-left-dot-grid) {
+  position: relative;
+  z-index: 1;
 }
 
 /* Auth: form field labels (DM Mono 9px uppercase) */
 .auth-page .field-label {
-  font-family: var(--font-mono), monospace;
+  font-family: "'DM Mono', monospace";
   font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--muted);
+  color: #4a4a4a;
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
@@ -409,6 +487,13 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
+}
+.auth-page .auth-left-panel-wrap .auth-left-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Auth: responsive */

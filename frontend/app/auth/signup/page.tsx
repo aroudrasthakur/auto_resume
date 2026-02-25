@@ -70,24 +70,11 @@ export default function SignUpPage() {
   }
 
   useEffect(() => {
-    if (!leftRef.current || !formRef.current) return
-    gsap.fromTo(leftRef.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
-    gsap.fromTo(formRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
-    if (titleRef.current) {
-      gsap.fromTo(
-        titleRef.current,
-        { opacity: 0, y: 20, skewY: 2 },
-        { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' }
-      )
-    }
-    if (fieldsRef.current) {
-      const targets = fieldsRef.current.querySelectorAll('.field, .field-row')
-      gsap.fromTo(
-        targets,
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, delay: 0.25, ease: 'power3.out' }
-      )
-    }
+    gsap.fromTo('.signup-left', { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' })
+    gsap.fromTo('.step-row-item', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.6, stagger: 0.1, delay: 0.35, ease: 'power3.out' })
+    gsap.fromTo('.signup-form', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.1, ease: 'power3.out' })
+    gsap.fromTo('.signup-form .form-title', { opacity: 0, y: 20, skewY: 2 }, { opacity: 1, y: 0, skewY: 0, duration: 0.8, delay: 0.2, ease: 'power4.out' })
+    gsap.fromTo('.signup-form .field, .signup-form .field-row', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, delay: 0.25, ease: 'power3.out' })
   }, [isLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {

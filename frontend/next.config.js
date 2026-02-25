@@ -19,6 +19,7 @@ const nextConfig = {
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    NEXT_PUBLIC_DEV_AUTH_BYPASS: ['true', '1', 'yes'].includes(String(process.env.DEV_AUTH_BYPASS || process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS || '').toLowerCase()) ? 'true' : '',
   },
 }
 

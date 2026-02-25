@@ -1,158 +1,138 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import gsap from 'gsap'
+const STATS = [
+  { val: '2×', lbl: 'More callbacks' },
+  { val: '<60s', lbl: 'To generate' },
+  { val: 'ATS', lbl: 'Optimised output' },
+  { val: "Jake's", lbl: 'Template standard' },
+]
 
 export default function SignInLeft() {
-  const cardRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!cardRef.current) return
-    gsap.fromTo(
-      cardRef.current,
-      { opacity: 0, y: 20, rotation: 0.5 },
-      { opacity: 1, y: 0, rotation: 0, duration: 0.9, delay: 0.4, ease: 'power3.out' }
-    )
-    gsap.to(cardRef.current, {
-      y: -6,
-      duration: 3,
-      ease: 'sine.inOut',
-      yoyo: true,
-      repeat: -1,
-      delay: 1.5,
-    })
-  }, [])
-
   return (
     <div className="signin-left flex flex-col justify-between h-full min-h-0">
-      {/* Top: eyebrow + headline + sub */}
-      <div className="min-h-0 shrink">
-        <p
-          className="auth-eyebrow mb-1"
-          style={{
-            fontFamily: 'var(--font-mono), monospace',
-            fontSize: '9px',
-            letterSpacing: '3px',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-          }}
-        >
-          <span
-            className="inline-block w-6 h-px bg-gold mr-2 align-middle"
-            style={{ marginRight: '8px', verticalAlign: 'middle' }}
-            aria-hidden
-          />
-          Welcome back
-        </p>
-        <h2
-          className="font-heading text-text leading-tight mb-1"
-          style={{
-            fontSize: 'clamp(24px, 3vw, 36px)',
-            letterSpacing: '-1px',
-            lineHeight: 1.1,
-            maxWidth: '320px',
-          }}
-        >
-          Your next role is <em className="text-gold not-italic">one paste</em> away.
-        </h2>
-        <p className="text-muted text-[13px] leading-snug" style={{ maxWidth: '320px', lineHeight: 1.5 }}>
-          Sign in to access your profile and generate tailored résumés for every job you apply to.
-        </p>
-      </div>
-
-      {/* Middle: mini resume card */}
-      <div className="my-3 shrink-0">
-        <div
-          className="flex items-center gap-2 mb-1"
-          style={{
-            fontFamily: 'var(--font-mono), monospace',
-            fontSize: '8px',
-            letterSpacing: '2px',
-            textTransform: 'uppercase',
-            color: 'var(--muted2)',
-          }}
-        >
-          <span
-            className="inline-block w-1.5 h-1.5 rounded-full bg-gold animate-pulse"
-            style={{ animation: 'pulseDot 2s ease-in-out infinite' }}
-            aria-hidden
-          />
-          Last generated · 2h ago
-        </div>
-        <div
-          ref={cardRef}
-          className="rp-card rounded overflow-hidden"
-          style={{
-            background: '#f9f7f3',
-            borderRadius: '3px',
-            padding: '12px 16px',
-            boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-          }}
-        >
-          <p className="font-heading text-[13px] text-[#111]">Alexandra Chen</p>
-          <p className="text-[9px] text-[#666] mb-2">Senior Software Engineer</p>
-          <div className="h-px bg-[#e8e4de] my-2" />
-          <ul className="space-y-0.5 text-[10px] text-[#333] mb-2">
-            <li className="flex gap-1.5">
-              <span className="text-gold">—</span>
-              Led ML pipeline dev, reduced latency 40%
-            </li>
-            <li className="flex gap-1.5">
-              <span className="text-gold">—</span>
-              Architected system for 2M+ daily users
-            </li>
-          </ul>
-          <div className="flex flex-wrap gap-1">
-            {['Python', 'React', 'AWS', 'Go'].map((s) => (
-              <span
-                key={s}
-                className="px-1 py-0.5 rounded"
-                style={{
-                  fontFamily: 'var(--font-mono), monospace',
-                  fontSize: '7px',
-                  background: '#f0ede8',
-                  borderRadius: '2px',
-                  color: '#333',
-                }}
-              >
-                {s}
-              </span>
-            ))}
+      <div className="relative z-[1] flex flex-col justify-between h-full min-h-0">
+        {/* Top: eyebrow + headline + sub */}
+        <div className="min-h-0 shrink">
+          <div
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: '9px',
+              letterSpacing: '3px',
+              textTransform: 'uppercase',
+              color: '#c9a96e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '28px',
+            }}
+          >
+            <span style={{ width: '24px', height: '1px', background: '#c9a96e', display: 'block', flexShrink: 0 }} />
+            Welcome Back
           </div>
+          <h1
+            style={{
+              fontFamily: "'DM Serif Display', serif",
+              fontSize: 'clamp(36px, 4vw, 56px)',
+              letterSpacing: '-2px',
+              lineHeight: '1.0',
+              color: '#f0ede8',
+              marginBottom: '16px',
+            }}
+          >
+            Your next role is <em style={{ color: '#c9a96e', fontStyle: 'italic' }}>one paste</em> away.
+          </h1>
+          <p style={{ fontSize: '14px', color: '#4a4a4a', lineHeight: 1.7, maxWidth: '320px' }}>
+            Sign in to access your profile and generate tailored résumés for every job you apply to.
+          </p>
         </div>
-      </div>
 
-      {/* Bottom: 2×2 stats grid */}
-      <div
-        className="grid grid-cols-2 gap-2 shrink-0"
-        style={{
-          borderTop: '1px solid var(--b1)',
-          paddingTop: '12px',
-        }}
-      >
-        {[
-          { value: '2×', label: 'More callbacks' },
-          { value: '<60s', label: 'To generate' },
-          { value: 'ATS', label: 'Optimised output' },
-          { value: "Jake's", label: 'Template standard' },
-        ].map(({ value, label }) => (
-          <div key={label}>
-            <p className="font-heading text-gold leading-none" style={{ fontSize: '18px' }}>
-              {value}
-            </p>
-            <p
-              className="text-muted leading-tight"
+        {/* Middle: pulsing label + resume card */}
+        <div className="my-6 shrink-0">
+          <div
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: '8px',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: '#2e2e2e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '12px',
+            }}
+          >
+            <span
               style={{
-                fontFamily: 'var(--font-mono), monospace',
-                fontSize: '7px',
-                letterSpacing: '1px',
-                textTransform: 'uppercase',
+                width: '5px',
+                height: '5px',
+                borderRadius: '50%',
+                background: '#4ade80',
+                animation: 'pd 2s ease-in-out infinite',
               }}
-            >
-              {label}
-            </p>
+              aria-hidden
+            />
+            Last Generated · 2h Ago
           </div>
-        ))}
+          <div
+            className="rp-card"
+            style={{
+              background: '#f9f7f3',
+              borderRadius: '3px',
+              padding: '18px 22px',
+              boxShadow: '0 20px 48px rgba(0,0,0,0.5)',
+            }}
+          >
+            <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: '15px', color: '#111' }}>Alexandra Chen</p>
+            <p style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>Senior Software Engineer</p>
+            <div style={{ height: '1px', background: '#e8e4de', margin: '12px 0' }} />
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 12px', fontSize: '9.5px', color: '#555' }}>
+              <li style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+                <span style={{ color: '#c9a96e' }}>—</span> Led ML pipeline dev, reduced latency 40%
+              </li>
+              <li style={{ display: 'flex', gap: '6px' }}>
+                <span style={{ color: '#c9a96e' }}>—</span> Architected system for 2M+ daily users
+              </li>
+            </ul>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {['Python', 'React', 'AWS', 'Go'].map((s) => (
+                <span
+                  key={s}
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: '7.5px',
+                    background: '#f0ede8',
+                    color: '#777',
+                    borderRadius: '2px',
+                    padding: '2px 7px',
+                  }}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: 2×2 stats grid (gap+bg divider pattern) */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1px',
+            background: '#1a1a1a',
+            border: '1px solid #1a1a1a',
+            borderRadius: '3px',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          {STATS.map(({ val, lbl }) => (
+            <div key={lbl} style={{ background: '#0d0d0d', padding: '16px 18px' }}>
+              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: '22px', letterSpacing: '-1px', color: '#c9a96e' }}>{val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '8px', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#4a4a4a', marginTop: '2px' }}>{lbl}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
