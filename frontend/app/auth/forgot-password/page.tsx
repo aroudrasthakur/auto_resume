@@ -79,7 +79,11 @@ export default function ForgotPasswordPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await confirmForgotPassword(email.trim(), otp.join(''), newPassword)
+      await confirmForgotPassword({
+        username: email.trim(),
+        confirmationCode: otp.join(''),
+        newPassword,
+      })
       setStep(4)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not reset password')

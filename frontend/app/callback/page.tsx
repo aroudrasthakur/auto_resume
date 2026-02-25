@@ -32,7 +32,7 @@ function CallbackContent() {
 
     // Exchange code for tokens
     exchangeCodeForTokens(code)
-      .then((tokens: { access_token: string; refresh_token?: string }) => {
+      .then((tokens) => {
         login(tokens)
         setStatus('success')
         // Brief delay to show success state
