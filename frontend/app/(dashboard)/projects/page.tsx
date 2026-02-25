@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Code2, Plus, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
   id: string
@@ -39,6 +40,8 @@ export default function ProjectsPage() {
     end_date: '',
     bullets: [''] as string[],
   })
+
+  const invalidateDashboard = useInvalidateDashboardData()
 
   const fetchData = useCallback(async () => {
     const [profilesRes, projectsRes] = await Promise.all([
@@ -108,6 +111,7 @@ export default function ProjectsPage() {
         setFormData({ name: '', role: '', start_date: '', end_date: '', bullets: [''] })
         setShowForm(false)
         fetchData()
+        invalidateDashboard()
       }
     } catch (err) {
       console.error(err)
@@ -119,7 +123,10 @@ export default function ProjectsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this project?')) return
     const res = await apiFetch(`/projects/${id}`, { method: 'DELETE' })
-    if (res.ok) fetchData()
+    if (res.ok) {
+      fetchData()
+      invalidateDashboard()
+    }
   }
 
   if (loading) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Briefcase, Plus, Trash2 } from 'lucide-react'
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
   id: string
@@ -43,6 +44,7 @@ export default function ExperiencePage() {
     bullets: [''] as string[],
   })
 
+  const invalidateDashboard = useInvalidateDashboardData()
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
@@ -135,6 +137,7 @@ export default function ExperiencePage() {
         })
         setShowForm(false)
         fetchData()
+        invalidateDashboard()
       }
     } catch (err) {
       console.error(err)
@@ -151,6 +154,7 @@ export default function ExperiencePage() {
         headers: getAuthHeaders(),
       })
       fetchData()
+      invalidateDashboard()
     } catch (err) {
       console.error(err)
     }

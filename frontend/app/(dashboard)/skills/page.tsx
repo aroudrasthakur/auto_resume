@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Wrench, Plus, Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
   id: string
@@ -34,6 +35,8 @@ export default function SkillsPage() {
     categoryName: '',
     items: [''] as string[],
   })
+
+  const invalidateDashboard = useInvalidateDashboardData()
 
   const fetchData = useCallback(async () => {
     const [profilesRes, categoriesRes] = await Promise.all([
@@ -112,7 +115,10 @@ export default function SkillsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this skill category and all its items?')) return
     const res = await apiFetch(`/skills/categories/${id}`, { method: 'DELETE' })
-    if (res.ok) fetchData()
+    if (res.ok) {
+      fetchData()
+      invalidateDashboard()
+    }
   }
 
   if (loading) {

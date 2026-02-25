@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 
 interface Profile {
   id: string
@@ -51,6 +52,7 @@ export default function GeneratePage() {
       }),
     })
     if (res.ok && res.data?.generated_resume_id) {
+      invalidateDashboard()
       router.push(`/resumes/${res.data.generated_resume_id}`)
       return
     }

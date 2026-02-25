@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Download, Loader2, CheckCircle, AlertCircle, Clock, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data';
 
 const ESTIMATED_SECONDS = 120; // ~2 min for AI generation
 const CIRCUMFERENCE = 2 * Math.PI * 45;
@@ -27,6 +28,7 @@ export default function ResumeStatusPage() {
   const params = useParams();
   const router = useRouter();
   const resumeId = params.id as string;
+  const invalidateDashboard = useInvalidateDashboardData();
   const [status, setStatus] = useState<any>(null);
   const [files, setFiles] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -103,6 +105,7 @@ export default function ResumeStatusPage() {
     const res = await apiFetch(`/resumes/${resumeId}`, { method: 'DELETE' });
     setDeleting(false);
     if (res.ok) {
+      invalidateDashboard();
       router.push('/resumes');
     } else {
       alert(res.error ?? 'Failed to delete resume');

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useDisplayUser } from '@/lib/use-display-user'
+import { useInvalidateDashboardData } from '@/lib/use-dashboard-data'
 import { apiFetch } from '@/lib/api'
 import { ArrowLeft, Mail, Briefcase, GraduationCap, Plus, Pencil, MapPin, FileText, Code2, Wrench } from 'lucide-react'
 
@@ -126,6 +127,7 @@ export default function ProfilePage() {
   })
 
   const currentProfile = profiles.length > 0 ? profiles[0] : null
+  const invalidateDashboard = useInvalidateDashboardData()
 
   const fetchProfiles = async () => {
     setError(null)
@@ -231,6 +233,7 @@ export default function ProfilePage() {
             })),
           })
           setIsEditing(false)
+          invalidateDashboard()
         } else {
           setError(res.error ?? 'Failed to update profile')
         }
@@ -255,6 +258,7 @@ export default function ProfilePage() {
             })),
           })
           setIsEditing(false)
+          invalidateDashboard()
         } else {
           setError(res.error ?? 'Failed to create profile')
         }

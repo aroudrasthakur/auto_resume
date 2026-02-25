@@ -1,6 +1,5 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   User,
@@ -13,13 +12,7 @@ import {
   X,
   Check,
 } from 'lucide-react'
-import { apiFetch } from '@/lib/api'
-
-interface ProfileCompleteness {
-  is_complete: boolean
-  missing_sections: string[]
-  profile_id?: string
-}
+import { useDashboardData } from '@/lib/use-dashboard-data'
 
 const SECTIONS = [
   { key: 'profile', name: 'Profile', href: '/profile', icon: User },
@@ -35,25 +28,7 @@ type DashboardRightPanelProps = {
 }
 
 export default function DashboardRightPanel({ onClose }: DashboardRightPanelProps) {
-  const [completeness, setCompleteness] = useState<ProfileCompleteness | null>(null)
-
-  const fetchCompleteness = useCallback(async () => {
-    const res = await apiFetch<ProfileCompleteness>('/profiles/check')
-    if (res.ok && res.data) {
-      setCompleteness(res.data)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchCompleteness()
-  }, [fetchCompleteness])
-
-  useEffect(() => {
-    const onFocus = () => fetchCompleteness()
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [fetchCompleteness])
-
+  const { completeness } = useDashboardData()
   const missing = completeness?.missing_sections ?? []
   const isComplete = (key: string) => !missing.includes(key)
 
