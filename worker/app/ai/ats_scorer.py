@@ -19,13 +19,17 @@ def ai_output_to_text(ai_output: Dict[str, Any]) -> str:
             parts.append(edu.get("degree", ""))
             parts.append(edu.get("major", ""))
             for h in edu.get("highlights", []):
-                parts.append((h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h)))
+                parts.append(
+                    (h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h))
+                )
     for exp in ai_output.get("experience") or []:
         if isinstance(exp, dict):
             parts.append(exp.get("company", ""))
             parts.append(exp.get("role", ""))
             for b in exp.get("bullets", []):
-                parts.append((b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b)))
+                parts.append(
+                    (b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b))
+                )
     for proj in ai_output.get("projects") or []:
         if isinstance(proj, dict):
             parts.append(proj.get("name", ""))

@@ -47,7 +47,11 @@ def generate_resume(self: Task, generated_resume_id: str) -> Dict:
 
         if not result.data:
             # Record may have been deleted or task is stale; skip without raising
-            return {"status": "skipped", "generated_resume_id": generated_resume_id, "reason": "not_found"}
+            return {
+                "status": "skipped",
+                "generated_resume_id": generated_resume_id,
+                "reason": "not_found",
+            }
 
         gen_resume = result.data[0]
 

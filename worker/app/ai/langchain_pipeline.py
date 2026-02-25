@@ -30,68 +30,86 @@ def _get_llm() -> ChatOpenAI:
     )
 
 
-_PROFILE_KEEP = {"display_name", "email", "phone", "location", "linkedin_url", "github_url", "website_url"}
+_PROFILE_KEEP = {
+    "display_name",
+    "email",
+    "phone",
+    "location",
+    "linkedin_url",
+    "github_url",
+    "website_url",
+}
 
 
 def _transform_profile_to_flat(profile_snapshot: Dict) -> Dict:
     """
     Transform profile snapshot to a flat format for prompts, trimming non-essential fields.
     """
-    profile = {k: v for k, v in (profile_snapshot.get("profile") or {}).items() if k in _PROFILE_KEEP}
+    profile = {
+        k: v for k, v in (profile_snapshot.get("profile") or {}).items() if k in _PROFILE_KEEP
+    }
     education = []
     for edu in profile_snapshot.get("education", []):
         hl = edu.get("education_highlight", edu.get("highlights", []))
-        education.append({
-            "school": edu.get("school"),
-            "location": edu.get("location"),
-            "start_date": edu.get("start_date"),
-            "end_date": edu.get("end_date"),
-            "degree": edu.get("degree"),
-            "major": edu.get("major"),
-            "gpa": edu.get("gpa"),
-            "highlights": [
-                h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h)
-                for h in hl
-            ],
-        })
+        education.append(
+            {
+                "school": edu.get("school"),
+                "location": edu.get("location"),
+                "start_date": edu.get("start_date"),
+                "end_date": edu.get("end_date"),
+                "degree": edu.get("degree"),
+                "major": edu.get("major"),
+                "gpa": edu.get("gpa"),
+                "highlights": [
+                    h.get("highlight", h.get("bullet", str(h))) if isinstance(h, dict) else str(h)
+                    for h in hl
+                ],
+            }
+        )
     experience = []
     for exp in profile_snapshot.get("experience", []):
         bullets = exp.get("experience_bullet", exp.get("bullets", []))
-        experience.append({
-            "company": exp.get("company"),
-            "location": exp.get("location"),
-            "start_date": exp.get("start_date"),
-            "end_date": exp.get("end_date"),
-            "role": exp.get("role"),
-            "is_current": exp.get("is_current"),
-            "bullets": [
-                b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b)
-                for b in bullets
-            ],
-        })
+        experience.append(
+            {
+                "company": exp.get("company"),
+                "location": exp.get("location"),
+                "start_date": exp.get("start_date"),
+                "end_date": exp.get("end_date"),
+                "role": exp.get("role"),
+                "is_current": exp.get("is_current"),
+                "bullets": [
+                    b.get("bullet", b.get("highlight", str(b))) if isinstance(b, dict) else str(b)
+                    for b in bullets
+                ],
+            }
+        )
     projects = []
     for proj in profile_snapshot.get("projects", []):
-        projects.append({
-            "name": proj.get("name"),
-            "start_date": proj.get("start_date"),
-            "end_date": proj.get("end_date"),
-            "role": proj.get("role"),
-            "bullets": [
-                b.get("bullet", str(b)) if isinstance(b, dict) else str(b)
-                for b in proj.get("project_bullet", proj.get("bullets", []))
-            ],
-            "technologies": [
-                t.get("tech", str(t)) if isinstance(t, dict) else str(t)
-                for t in proj.get("project_tech", proj.get("technologies", []))
-            ],
-        })
+        projects.append(
+            {
+                "name": proj.get("name"),
+                "start_date": proj.get("start_date"),
+                "end_date": proj.get("end_date"),
+                "role": proj.get("role"),
+                "bullets": [
+                    b.get("bullet", str(b)) if isinstance(b, dict) else str(b)
+                    for b in proj.get("project_bullet", proj.get("bullets", []))
+                ],
+                "technologies": [
+                    t.get("tech", str(t)) if isinstance(t, dict) else str(t)
+                    for t in proj.get("project_tech", proj.get("technologies", []))
+                ],
+            }
+        )
     skills = []
     for cat in profile_snapshot.get("skills", []):
         items = cat.get("skill_item", cat.get("items", []))
-        skills.append({
-            "name": cat.get("name", ""),
-            "items": [i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items],
-        })
+        skills.append(
+            {
+                "name": cat.get("name", ""),
+                "items": [i.get("item", str(i)) if isinstance(i, dict) else str(i) for i in items],
+            }
+        )
     return {
         "profile": profile,
         "education": education,

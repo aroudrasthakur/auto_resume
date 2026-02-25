@@ -43,7 +43,7 @@ def render_latex(
     contacts = (profile.get("contacts") or []) if isinstance(profile, dict) else []
 
     contact_dict = {}
-    for contact in (contacts or []):
+    for contact in contacts or []:
         if not isinstance(contact, dict):
             continue
         kind = (contact.get("contact_kind") or "").lower()
@@ -74,7 +74,16 @@ def render_latex(
 
     def _esc_edu(edu):
         if not isinstance(edu, dict):
-            return {"school": "", "location": "", "start_date": "", "end_date": "", "degree": "", "major": "", "gpa": "", "highlights": []}
+            return {
+                "school": "",
+                "location": "",
+                "start_date": "",
+                "end_date": "",
+                "degree": "",
+                "major": "",
+                "gpa": "",
+                "highlights": [],
+            }
         return {
             "school": _esc(edu.get("school")),
             "location": _esc(edu.get("location")),
@@ -88,7 +97,15 @@ def render_latex(
 
     def _esc_exp(exp):
         if not isinstance(exp, dict):
-            return {"company": "", "location": "", "start_date": "", "end_date": "", "role": "", "is_current": False, "bullets": []}
+            return {
+                "company": "",
+                "location": "",
+                "start_date": "",
+                "end_date": "",
+                "role": "",
+                "is_current": False,
+                "bullets": [],
+            }
         bullets = exp.get("bullets", []) or []
         return {
             "company": _esc(exp.get("company")),
@@ -97,19 +114,30 @@ def render_latex(
             "end_date": _esc(exp.get("end_date")),
             "role": _esc(exp.get("role")),
             "is_current": exp.get("is_current"),
-            "bullets": [{"bullet": _esc(b.get("bullet") if isinstance(b, dict) else b)} for b in bullets],
+            "bullets": [
+                {"bullet": _esc(b.get("bullet") if isinstance(b, dict) else b)} for b in bullets
+            ],
         }
 
     def _esc_proj(proj):
         if not isinstance(proj, dict):
-            return {"name": "", "start_date": "", "end_date": "", "role": "", "bullets": [], "technologies": []}
+            return {
+                "name": "",
+                "start_date": "",
+                "end_date": "",
+                "role": "",
+                "bullets": [],
+                "technologies": [],
+            }
         bullets = proj.get("bullets", [])
         return {
             "name": _esc(proj.get("name")),
             "start_date": _esc(proj.get("start_date")),
             "end_date": _esc(proj.get("end_date")),
             "role": _esc(proj.get("role")),
-            "bullets": [{"bullet": _esc(b.get("bullet") if isinstance(b, dict) else b)} for b in bullets],
+            "bullets": [
+                {"bullet": _esc(b.get("bullet") if isinstance(b, dict) else b)} for b in bullets
+            ],
             "technologies": [_esc(t) for t in proj.get("technologies", [])],
         }
 
@@ -117,7 +145,7 @@ def render_latex(
         if not isinstance(cats, (list, tuple)):
             return []
         result = []
-        for c in (cats or []):
+        for c in cats or []:
             if not isinstance(c, dict):
                 continue
             items_raw = c.get("items") or []
@@ -130,7 +158,9 @@ def render_latex(
         **contact_dict,
         "education": [_esc_edu(e) for e in ai_output.get("education", [])],
         "experience": [_esc_exp(e) for e in ai_output.get("experience", [])],
-        "projects": [_esc_proj(p) for p in (ai_output.get("projects", []) if include_projects else [])],
+        "projects": [
+            _esc_proj(p) for p in (ai_output.get("projects", []) if include_projects else [])
+        ],
         "skills": {"categories": _esc_skills(skills_categories)} if include_skills else None,
         "include_projects": include_projects,
         "include_skills": include_skills,
