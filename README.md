@@ -1,262 +1,362 @@
 # AI Resume Creator
 
-AI-powered resume generation tool with vector-powered intelligent content selection, deterministic LaTeX rendering, and comprehensive security features.
+[![CI](https://github.com/aroudrasthakur/auto_resume/actions/workflows/ci.yml/badge.svg)](https://github.com/aroudrasthakur/auto_resume/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![codecov](https://codecov.io/gh/aroudrasthakur/auto_resume/branch/main/graph/badge.svg)](https://codecov.io/gh/aroudrasthakur/auto_resume)
 
-## Features
+**AI-powered resume generation that tailors your experience to each job description—without inventing facts.**
 
-- **Full CRUD** for profile, education, experience, projects, and skills
-- **Vector-powered intelligent matching** using pgvector for semantic similarity search
-- **AI-driven resume optimization** with multiple provider support (OpenAI, Mock, Ollama)
-- **Jake's Resume LaTeX template** with deterministic rendering
-- **PDF and DOCX export** with presigned download URLs
-- **AWS Cognito authentication** with JWT validation
-- **Encrypted contact fields** using AES-256-GCM
-- **Comprehensive test coverage** (>80% backend/worker, >70% frontend)
+AI Resume Creator is a full-stack application for building a structured career profile once, then generating job-specific resumes on demand. A FastAPI backend and Celery worker orchestrate semantic matching over your real experience (pgvector), AI-assisted content selection (OpenAI, Ollama, or a deterministic mock), and deterministic rendering through Jake's Resume LaTeX template into PDF, LaTeX, and DOCX. A Next.js frontend handles profile management, auth, and downloads—backed by Supabase, Redis, and AWS Cognito.
 
-## Tech Stack
+---
 
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, React Hook Form, TanStack Query
-- **Backend**: FastAPI, Python 3.11, Supabase (PostgreSQL + pgvector + Storage)
-- **Worker**: Celery, Redis, Tectonic (LaTeX compiler)
-- **AI**: OpenAI GPT-4, Mock adapter (for testing), Ollama (local models)
-- **Database**: Supabase Cloud (PostgreSQL with pgvector extension)
-- **Migrations**: Alembic
-- **Testing**: pytest (>80% coverage), Jest, Codecov integration
+## Key Features
 
-## Prerequisites
+- 🧠 **Vector-Powered Matching** — Embeds job descriptions and profile content in PostgreSQL (pgvector) to surface the most relevant experience and projects before AI optimization.
+- 🤖 **Multi-Provider AI Pipeline** — Pluggable adapters for OpenAI, local Ollama, and a mock provider for CI and offline development.
+- 📄 **Deterministic LaTeX Rendering** — Jake's Resume ATS template rendered with Jinja2, escaped user content, and compiled to PDF via Tectonic for consistent, professional output.
+- 🔐 **Production-Grade Security** — AWS Cognito JWT validation, row-level ownership, AES-256-GCM encrypted contact fields, rate limiting, and Supabase RLS.
+- 📦 **Async Export & Downloads** — Celery workers generate PDF, LaTeX, and DOCX in the background; finished files are stored in Supabase Storage with time-limited presigned URLs.
+- 🗂️ **Full Profile CRUD** — Manage profiles, education, experience (with bullets), projects, skills, and saved job descriptions from a modern Next.js UI.
 
-- Python 3.11+
-- Node.js 20+
-- pnpm 8+
-- Docker (for Redis)
-- Supabase account
-- AWS Cognito User Pool (or use DEV_AUTH_BYPASS for local dev)
-- Tectonic (for PDF compilation)
+---
 
-## Local Setup (single `requirements.txt`)
+## Tech Stack & Architecture
 
-### 1. Clone Repository
+| Layer | Technologies |
+|-------|----------------|
+| **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, TanStack Query, React Hook Form, Zod, AWS Amplify |
+| **API** | FastAPI, Pydantic v2, SQLAlchemy, Alembic, SlowAPI (rate limits) |
+| **Worker** | Celery 5, Redis 7, Jinja2, python-docx, sentence-transformers |
+| **Data** | Supabase (PostgreSQL 15+ with pgvector, Storage) |
+| **Auth** | AWS Cognito (Hosted UI + JWT / JWKS); optional `DEV_AUTH_BYPASS` for local dev |
+| **AI** | OpenAI GPT (LangChain), Ollama, mock adapter |
+| **Infra (local)** | Docker Compose (Redis) |
+
+**Why this stack?**
+
+- **FastAPI + Celery** separates synchronous API concerns from long-running resume jobs (embedding, AI calls, LaTeX compile) without blocking HTTP workers.
+- **Supabase + pgvector** gives managed Postgres, object storage, and native vector search in one platform—avoiding a separate vector DB for semantic JD matching.
+- **Next.js 14** delivers a typed, SSR-capable UI with strong form validation for complex profile data entry.
+- **Deterministic LaTeX** (vs. pure HTML-to-PDF) produces ATS-friendly, pixel-stable resumes; the AI only selects and rewrites content—the layout stays predictable.
+
+For diagrams and data-flow detail, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). For day-to-day startup commands, see [`STARTUP_GUIDE.md`](STARTUP_GUIDE.md).
+
+```mermaid
+graph LR
+    User[Browser] --> Next[Next.js]
+    Next -->|JWT| API[FastAPI]
+    API --> DB[(Supabase / pgvector)]
+    API --> Redis[(Redis)]
+    Redis --> Worker[Celery Worker]
+    Worker --> AI[AI Provider]
+    Worker --> Storage[Supabase Storage]
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+| Requirement | Version / Notes |
+|-------------|-----------------|
+| **Python** | 3.11+ |
+| **Node.js** | 20+ |
+| **pnpm** | 8+ |
+| **Docker** | For Redis (`docker compose`) |
+| **Supabase** | Project with pgvector enabled |
+| **AWS Cognito** | User pool + app client (or `DEV_AUTH_BYPASS=true`) |
+| **Tectonic** | LaTeX compiler for PDF output ([install guide](https://tectonic-typesetting.github.io/)) |
+
+Optional: **Ollama** (local AI), **OpenAI API key** (cloud AI).
+
+### Installation
+
 ```bash
-git clone <repository-url>
+# Clone
+git clone https://github.com/aroudrasthakur/auto_resume.git
 cd auto_resume
-```
 
-### 2. Configure Environment
-**All services (backend, worker, frontend) use the root `.env` file as the single source of truth.**
-
-Copy and fill the root `.env` file:
-```bash
+# Environment (root .env is shared by backend, worker, and migrations)
 cp .env.example .env
-```
+# Edit .env — see Configuration below
 
-Key entries include:
-- `DATABASE_URL` - Supabase database connection string
-- Supabase keys (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`)
-- Cognito configuration (`COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `COGNITO_REGION`)
-- Frontend public variables (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COGNITO_DOMAIN`, `NEXT_PUBLIC_COGNITO_CLIENT_ID`, `NEXT_PUBLIC_REDIRECT_URI`)
-- `AI_PROVIDER` and `OPENAI_API_KEY` (if using OpenAI)
-- `REDIS_URL`
-- `ENCRYPTION_KEY` (64 hex chars)
-
-Example frontend variables in root `.env`:
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_COGNITO_DOMAIN=<https://your-domain.auth.<region>.amazoncognito.com>
-NEXT_PUBLIC_COGNITO_CLIENT_ID=<app-client-id>
-NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/callback
-```
-
-More detailed startup steps are in `STARTUP_GUIDE.md`.
-
-### 3. Python Setup (backend/worker/migrations share the same venv)
-```bash
+# Python virtual environment (single venv for backend, worker, migrations)
 python -m venv .venv
+
 # Windows PowerShell
 .venv\Scripts\Activate.ps1
-# macOS/Linux
-source .venv/bin/activate
+
+# macOS / Linux
+# source .venv/bin/activate
 
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e ./shared
-```
 
-### 4. Database Migrations
-```bash
+# Optional: dev tools (pytest, black, mypy)
+pip install -r requirements-dev.txt
+
+# Database
 cd migrations
 alembic upgrade head
-python seed.py  # optional sample data/templates
-```
+python seed.py   # optional: sample templates / data
+cd ..
 
-### 5. Frontend Dependencies
-```bash
+# Frontend
 cd frontend
 pnpm install
+cd ..
 ```
 
-### 6. Start Services
+### Running the App
+
+Start four processes (four terminals recommended):
+
 ```bash
-# From repo root
+# Terminal 1 — Redis
 docker compose up -d redis
 
-# Backend (new terminal)
+# Terminal 2 — API (from repo root, venv active)
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Worker (new terminal)
+# Terminal 3 — Celery worker (venv active)
 cd worker
 celery -A app.celery_app worker --loglevel=info
 
-# Frontend (new terminal)
+# Terminal 4 — Frontend
 cd frontend
 pnpm dev
 ```
 
-### 7. Access Application
-- Frontend: http://localhost:3000
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+| Service | URL |
+|---------|-----|
+| **Frontend** | http://localhost:3000 |
+| **API** | http://localhost:8000 |
+| **OpenAPI / Swagger** | http://localhost:8000/docs |
+| **Health check** | http://localhost:8000/health |
 
-### 8. Notes / Troubleshooting
-- Backend, worker, and migrations load `.env` from the project root automatically.
-- If Alembic complains about `DATABASE_URL`, ensure it is set in `.env` and the virtualenv is active.
-- If Cognito returns `invalid_scope` or `redirect_mismatch`, confirm the App Client has:
-  - Grant: Authorization code
-  - Scopes: `openid`, `email`, `profile`
-  - Callback: `http://localhost:3000/callback`
-  - Sign-out: `http://localhost:3000`
+**Interactive setup:** run `.\setup.ps1` on Windows for a guided `.env` wizard.
 
-## Testing
+---
 
-### Backend Tests
+## Configuration
+
+All backend, worker, and migration services load environment variables from the **repository root** `.env`. Copy from `.env.example` and fill in your values.
 
 ```bash
-cd backend
-poetry run pytest --cov=app --cov-report=html
-```
+# ── Supabase ─────────────────────────────────────────────────────────────
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_KEY=your-service-role-key
+DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
 
-Coverage report: `backend/htmlcov/index.html`
+# ── Auth (Cognito) ───────────────────────────────────────────────────────
+COGNITO_USER_POOL_ID=us-east-1_xxxxxxxxx
+COGNITO_CLIENT_ID=your-app-client-id
+COGNITO_CLIENT_SECRET=          # required if app client has a secret
+COGNITO_REGION=us-east-1
+COGNITO_JWKS_URL=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx/.well-known/jwks.json
+DEV_AUTH_BYPASS=false           # set true to skip Cognito locally
 
-### Worker Tests
-
-```bash
-cd worker
-AI_PROVIDER=mock poetry run pytest --cov=app --cov-report=html
-```
-
-### Frontend Tests
-
-```bash
-cd frontend
-pnpm test --coverage
-```
-
-## AI Provider Configuration
-
-### OpenAI (Default)
-
-```bash
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-xxx
-```
-
-### Mock (For Testing/CI)
-
-```bash
-AI_PROVIDER=mock
-```
-
-Returns deterministic JSON without API calls.
-
-### Ollama (Local)
-
-```bash
-AI_PROVIDER=ollama
+# ── AI ───────────────────────────────────────────────────────────────────
+AI_PROVIDER=mock                # mock | openai | ollama
+OPENAI_API_KEY=sk-...           # required when AI_PROVIDER=openai
 OLLAMA_URL=http://localhost:11434
+
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSION=1536
+
+# ── Infrastructure ───────────────────────────────────────────────────────
+REDIS_URL=redis://localhost:6379/0
+ENCRYPTION_KEY=                  # 64 hex chars (32 bytes); generate with:
+                                 # python -c "import secrets; print(secrets.token_hex(32))"
+
+# ── App ──────────────────────────────────────────────────────────────────
+API_HOST=0.0.0.0
+API_PORT=8000
+ENVIRONMENT=development
+CELERY_CONCURRENCY=2
+
+# ── Frontend (also in root .env) ───────────────────────────────────────
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_COGNITO_DOMAIN=https://your-domain.auth.region.amazoncognito.com
+NEXT_PUBLIC_COGNITO_CLIENT_ID=your-client-id
+NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/callback
 ```
 
-Requires Ollama running locally with a compatible model.
+**Cognito Hosted UI checklist (common login failures):**
+
+- Callback URL: `http://localhost:3000/callback`
+- Sign-out URL: `http://localhost:3000`
+- Grant type: Authorization code
+- Scopes: `openid`, `email`, `profile`
+
+---
+
+## Usage Examples & API Reference
+
+### Generate a tailored resume
+
+`POST /api/v1/resumes/generate` — enqueues async generation (rate-limited). Requires `Authorization: Bearer <JWT>` (or dev bypass).
+
+**Request**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/resumes/generate \
+  -H "Authorization: Bearer YOUR_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile_id": "550e8400-e29b-41d4-a716-446655440000",
+    "job_description_text": "Senior backend engineer with FastAPI, PostgreSQL, and distributed systems experience.",
+    "template_id": "jakes-resume-ats",
+    "page_count": 1,
+    "include_projects": true,
+    "include_skills": true,
+    "outputs": ["PDF", "DOCX"]
+  }'
+```
+
+**Response** `202`-style body (immediate queue acknowledgment)
+
+```json
+{
+  "generated_resume_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "status": "QUEUED",
+  "message": "Resume generation started"
+}
+```
+
+### Poll status and download
+
+```bash
+# Status
+curl http://localhost:8000/api/v1/resumes/{resume_id} \
+  -H "Authorization: Bearer YOUR_JWT"
+
+# List files (when status is DONE)
+curl http://localhost:8000/api/v1/resumes/{resume_id}/files \
+  -H "Authorization: Bearer YOUR_JWT"
+
+# Presigned download URL
+curl http://localhost:8000/api/v1/resumes/{resume_id}/files/{file_id}/download \
+  -H "Authorization: Bearer YOUR_JWT"
+```
+
+### Core API surface
+
+| Prefix | Description |
+|--------|-------------|
+| `/api/v1/auth` | Signup, login, password reset (Cognito-backed) |
+| `/api/v1/profiles` | Profile CRUD and completeness check |
+| `/api/v1/education` | Education entries and highlights |
+| `/api/v1/experience` | Work history and bullets |
+| `/api/v1/projects` | Projects and bullets |
+| `/api/v1/skills` | Skill categories and items |
+| `/api/v1/job-descriptions` | Saved job descriptions |
+| `/api/v1/resumes` | Generate, list, status, file downloads |
+
+Full interactive docs: **http://localhost:8000/docs**
+
+---
 
 ## Project Structure
 
 ```
 auto_resume/
-├── frontend/          # Next.js frontend
-├── backend/           # FastAPI backend
-├── worker/            # Celery worker
-├── shared/            # Shared Python utilities
-├── migrations/        # Alembic migrations
-├── templates/         # Jake's Resume LaTeX template
-├── docs/              # Documentation
-└── .github/workflows/ # CI/CD workflows
+├── frontend/           # Next.js 14 UI
+├── backend/            # FastAPI application
+├── worker/             # Celery tasks (AI, LaTeX, embeddings)
+├── shared/             # Pydantic schemas & shared utilities (pip install -e)
+├── migrations/         # Alembic migrations + seed script
+├── templates/          # Jake's Resume LaTeX templates
+├── docs/               # Architecture & design docs
+├── .github/workflows/  # CI (pytest, Jest, Codecov)
+├── docker-compose.yml  # Redis for local development
+├── requirements.txt    # Unified Python dependencies
+└── .env.example        # Environment template
 ```
 
-## Architecture
+---
 
-See `docs/ARCHITECTURE.md` for detailed architecture documentation with diagrams.
+## Testing
+
+```bash
+# Backend (venv active, from backend/)
+pytest --cov=app --cov-report=html
+
+# Worker (use mock AI to avoid API calls)
+cd worker
+set AI_PROVIDER=mock          # Windows
+# export AI_PROVIDER=mock     # macOS/Linux
+pytest --cov=app --cov-report=html
+
+# Frontend
+cd frontend
+pnpm test --coverage
+```
+
+CI runs on every push/PR to `main` via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+---
 
 ## Security
 
-- JWT validation on all protected endpoints
-- Row-level ownership enforcement (user_id filtering)
-- Encrypted contact fields (AES-256-GCM)
-- Rate limiting (10 generate requests/hour)
-- Input validation with Pydantic
-- No PII in logs
-- Supabase RLS policies
+- JWT validation on protected routes (Cognito JWKS)
+- Per-user row ownership (`user_id` filtering) to prevent IDOR
+- AES-256-GCM encryption for sensitive contact fields
+- Rate limiting on resume generation (10 requests/hour per IP, configurable)
+- Pydantic input validation; no PII in application logs
+- Supabase Row Level Security policies in production
 
-## Development
+---
 
-### Code Quality
+## Deployment Notes
 
-```bash
-# Format code
-cd backend && poetry run black . && poetry run isort .
-cd worker && poetry run black . && poetry run isort .
+| Component | Suggested targets |
+|-----------|-------------------|
+| **Backend / Worker** | AWS ECS, Google Cloud Run, Railway |
+| **Frontend** | Vercel, Netlify |
+| **Database / Storage** | Supabase (production project + connection pooling) |
+| **Queue** | Managed Redis (ElastiCache, Upstash, etc.) |
 
-# Type checking
-cd backend && poetry run mypy app
-cd worker && poetry run mypy app
-cd frontend && pnpm type-check
+Set production env vars from `.env.example`, disable `DEV_AUTH_BYPASS`, and align Cognito callback URLs with your production domain.
 
-# Linting
-cd frontend && pnpm lint
-```
+---
 
-## Deployment
+## Roadmap & Contributing
 
-### Backend/Worker
+### Roadmap
 
-Deploy to AWS ECS, Google Cloud Run, or Railway:
-- Set production environment variables
-- Ensure Redis is accessible
-- Configure Supabase connection pooling
+- [ ] GraphQL or tRPC layer for typed frontend queries
+- [ ] Additional resume templates beyond Jake's ATS layout
+- [ ] Batch generation for multiple job descriptions
+- [ ] Admin dashboard for usage analytics and template management
+- [ ] One-click deploy (Docker Compose full stack or Helm chart)
 
-### Frontend
+### Contributing
 
-Deploy to Vercel or Netlify:
-- Set `NEXT_PUBLIC_API_URL` to production API URL
-- Configure Cognito domain and redirect URIs
+Contributions are welcome. Fork the repository, create a feature branch from `main`, and open a Pull Request with a clear description of your change. Run backend, worker, and frontend tests locally before submitting; maintain existing coverage thresholds (>80% backend/worker, >70% frontend where applicable).
 
-### Supabase
+1. Fork → `git checkout -b feature/your-feature`
+2. Install deps and run tests (see **Testing**)
+3. Open a PR against `main`
 
-- Use production Supabase project
-- Configure RLS policies
-- Set up database backups
+---
 
-## License
+## License & Contact
 
-MIT
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+| | |
+|---|---|
+| **Repository** | https://github.com/aroudrasthakur/auto_resume |
+| **Issues** | https://github.com/aroudrasthakur/auto_resume/issues |
+| **Author** | [aroudrasthakur](https://github.com/aroudrasthakur) |
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Ensure tests pass and coverage is maintained
-5. Submit a pull request
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
-
+For bugs, feature requests, or questions, please [open an issue](https://github.com/aroudrasthakur/auto_resume/issues).
